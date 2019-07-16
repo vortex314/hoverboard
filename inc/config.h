@@ -101,7 +101,7 @@
 // - weakr and weakl: field weakening for extra boost at high speed (speedR > 700 and speedL > 700). 0 to ~400
 
 #define SPEED_IS_KMH		//ROBO spped is 10*km/h so 60 would be 6.0 km/h
-	// better only use with digital communication like uart
+	// better only use with digital communication like uart 
 
 #define FILTER	0.01	//XXX  // lower value == softer filter. do not use values <0.01, you will get float precision issues.
 #define SPEED_COEFFICIENT	-1	//XXX  // higher value == stronger. 0.0 to ~2.0?

@@ -28,6 +28,7 @@
 #include "hallinterrupts.h"
 #include "crc32.h"
 #include <stdbool.h>
+#include <string.h>	//robo
 
 void SystemClock_Config(void);
 
@@ -45,6 +46,8 @@ int cmd1, cmd1_ADC;  // normalized input values. -1000 to 1000
 int cmd2, cmd2_ADC;
 int cmd3;
 
+int cmd2Goal;	// goal speed for SPEED_IS_KMH
+
 bool ADCcontrolActive = false;
 bool SoftWatchdogActive= false;
 
@@ -55,8 +58,30 @@ typedef struct{
    uint32_t crc;
 #endif
 } Serialcommand;
-
 volatile Serialcommand command;
+
+//ROBO begin
+typedef struct{
+   int16_t iSpeedL;		// 100* km/h
+   int16_t iSpeedR;		// 100* km/h
+   uint16_t iHallSkippedL;
+   uint16_t iHallSkippedR;
+   uint16_t iTemp;		// °C
+   uint16_t iVolt;		// 100* V
+   int16_t iAmpL;		// 100* A
+   int16_t iAmpR;		// 100* A
+   uint32_t crc;
+} SerialFeedback;
+volatile SerialFeedback oFeedback;
+
+#ifdef DEBUG_SERIAL_USART3
+#define UART_DMA_CHANNEL DMA1_Channel2
+#endif
+#ifdef DEBUG_SERIAL_USART2
+#define UART_DMA_CHANNEL DMA1_Channel7
+#endif
+//ROBO end
+
 
 int disablepoweroff = 0;
 int powerofftimer = 0;
@@ -79,6 +104,9 @@ extern uint8_t enable; // global variable for motor enable
 
 extern volatile uint32_t timeout; // global variable for timeout
 extern float batteryVoltage; // global variable for battery voltage
+extern float currentL;	// defined and updated in bldc.c
+extern float currentR;	// defined and updated in bldc.c
+
 
 uint32_t inactivity_timeout_counter;
 
@@ -116,12 +144,43 @@ void poweroff() {
 }
 
 #ifdef CONTROL_SERIAL_NAIVE_CRC
-bool checkCRC(Serialcommand* command) {
+//ROBO begin
+bool checkCRC2(volatile Serialcommand* command) 
+{
+	uint8_t a[15];
+	memcpy((void*)a,(void*)command,8);
+	memcpy((void*)(a+8),(void*)command,7);
+	
+	for (uint8_t iOffset=0; iOffset< 8; iOffset++)
+	{
+		Serialcommand* pCmd = (Serialcommand*) (a+iOffset);
+		uint32_t crc = 0;
+		crc32((const void *)pCmd, 4, &crc); // 4 2x uint16_t = 4 bytes
+		if(pCmd->crc == crc) 
+		{
+			memcpy((void*)command,(void*)pCmd,8);
+			setScopeChannel(0, 1);
+			if (	(abs(pCmd->steer)>1000) || (abs(pCmd->steer)>1000)	)
+			{
+				setScopeChannel(1,255);
+				return false;
+			}
+			setScopeChannel(1,(int) iOffset);
+			return true;
+		}
+	}
+	setScopeChannel(0, 0);
+	setScopeChannel(1, (int)command->crc);
+	return false;
+}
+//ROBO end
+
+bool checkCRC(volatile Serialcommand* command) {
 	uint32_t crc = 0;
 	crc32((const void *)command, 4, &crc); // 4 2x uint16_t = 4 bytes
 
-	setScopeChannel(0, (int)crc);  // 1: ADC1
-	setScopeChannel(1, (int)command->crc);  // 2: ADC2
+	setScopeChannel(0, (int)crc);
+	setScopeChannel(1, (int)command->crc);
 
 
 	if(command->crc == crc) {
@@ -252,7 +311,9 @@ int main(void) {
   SoftWatchdogActive= true;
 #endif
 
+	uint16_t iLog = 0;
   while(1) {
+  	iLog++;
       HAL_Delay(DELAY_IN_MAIN_LOOP); //delay in ms
 
     // TODO: Method to select which input is used for Protocol when both are active
@@ -356,7 +417,7 @@ int main(void) {
 
     #if defined(CONTROL_SERIAL_NAIVE_USART2) || defined(CONTROL_SERIAL_NAIVE_USART3)
     #ifdef CONTROL_SERIAL_NAIVE_CRC
-      if(checkCRC(&command))
+      if(checkCRC2(&command))	//ROBO
     #else
       if(1)
     #endif
@@ -368,7 +429,7 @@ int main(void) {
     	  cmd1 = 0;
     	  cmd2 = 0;
       }
-
+	//cmd2 = -100;
 
       timeout = 0;
     #endif
@@ -382,9 +443,35 @@ int main(void) {
       }
     #endif
 
+#ifdef SPEED_IS_KMH
+	long iSpeed = (HallData[0].HallSpeed_mm_per_s + HallData[1].HallSpeed_mm_per_s)/-2;	// mm/s
+	long iSpeed_Goal = (cmd2 * 1000) / 36;
+
+	if (	(abs(iSpeed_Goal) < 56)	&& (abs(cmd2Goal) < 50)	)	// 2 = 0.2 km/h
+	{
+	    speed = cmd2Goal = 0;
+	}	
+	else 
+	if (iSpeed > (iSpeed_Goal + 28))	// 28 = 27.777 = 0.1 km/h
+	{
+		cmd2Goal -= CLAMP((iSpeed-iSpeed_Goal)/28,1,3);
+		if (cmd2Goal < -1000)	cmd2Goal = -1000;
+	}
+	else if (iSpeed < (iSpeed_Goal -28))
+	{
+		//cmd2Goal += 3;
+		cmd2Goal += CLAMP((iSpeed_Goal-iSpeed)/28,1,3);
+		if (cmd2Goal > 1000)	cmd2Goal = 1000;
+	}
+    speed = cmd2Goal;
+    steer = steer * (1.0 - FILTER) + cmd1 * FILTER;
+
+#else
     // ####### LOW-PASS FILTER #######
     steer = steer * (1.0 - FILTER) + cmd1 * FILTER;
     speed = speed * (1.0 - FILTER) + cmd2 * FILTER;
+#endif
+
 
 
     // ####### MIXER #######
@@ -422,10 +509,51 @@ int main(void) {
     lastSpeedR = speedR;
 
 
-    if (inactivity_timeout_counter % 25 == 0) {
+    //if (inactivity_timeout_counter % 25 == 0) 
+    if (iLog*DELAY_IN_MAIN_LOOP > 200)	// log every 200 ms
+    {
+    	iLog = 0;
       // ####### CALC BOARD TEMPERATURE #######
       board_temp_adc_filtered = board_temp_adc_filtered * 0.99 + (float)adc_buffer.temp * 0.01;
       board_temp_deg_c = ((float)TEMP_CAL_HIGH_DEG_C - (float)TEMP_CAL_LOW_DEG_C) / ((float)TEMP_CAL_HIGH_ADC - (float)TEMP_CAL_LOW_ADC) * (board_temp_adc_filtered - (float)TEMP_CAL_LOW_ADC) + (float)TEMP_CAL_LOW_DEG_C;
+
+
+//ROBO begin
+#if defined DEBUG_SERIAL_FEEDBACK && (defined DEBUG_SERIAL_USART2 || defined DEBUG_SERIAL_USART3)
+
+	    if(UART_DMA_CHANNEL->CNDTR == 0) 
+	    {
+			oFeedback.iSpeedL	= (int) (float)HallData[0].HallSpeed_mm_per_s * 0.36f;
+			oFeedback.iSpeedR	= (int) (float)HallData[1].HallSpeed_mm_per_s * 0.36f;
+			oFeedback.iHallSkippedL	= HallData[0].HallSkipped;
+			oFeedback.iHallSkippedR	= HallData[1].HallSkipped;
+			oFeedback.iTemp	= (int)	board_temp_deg_c;
+			oFeedback.iVolt	= (int)	(batteryVoltage * 100.0f);
+			oFeedback.iAmpL = (int) (currentL * 100.0f);
+			oFeedback.iAmpR = (int)	(currentR * 100.0f);
+			oFeedback.crc = 0;
+			crc32((const void *)&oFeedback, sizeof(oFeedback)-4, &oFeedback.crc);
+
+/*			oFeedback.iSpeedL	= 1;
+			oFeedback.iSpeedR	= 2;
+			oFeedback.iHallSkippedL	= 3;
+			oFeedback.iHallSkippedR	= 4;
+			oFeedback.iTemp	= (int)	5;
+			oFeedback.iVolt	= (int)	6;
+			oFeedback.iAmpL = (int)	7;
+			oFeedback.iAmpR = (int)	8;
+			oFeedback.crc = 0;
+			crc32((const void *)&oFeedback, sizeof(oFeedback)-4, &oFeedback.crc);
+*/
+
+
+			UART_DMA_CHANNEL->CCR &= ~DMA_CCR_EN;
+			UART_DMA_CHANNEL->CNDTR = sizeof(oFeedback);
+			UART_DMA_CHANNEL->CMAR  = (uint32_t)&oFeedback;
+			UART_DMA_CHANNEL->CCR |= DMA_CCR_EN;
+	    }
+#else
+//ROBO end
 
       // ####### DEBUG SERIAL OUT #######
       #ifdef CONTROL_ADC
@@ -439,6 +567,7 @@ int main(void) {
       setScopeChannel(6, (int)board_temp_adc_filtered);  // 7: for board temperature calibration
       setScopeChannel(7, (int)board_temp_deg_c);  // 8: for verifying board temperature calibration
       consoleScope();
+#endif	//ROBO
     }
 
 

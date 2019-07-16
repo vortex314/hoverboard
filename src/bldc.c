@@ -132,6 +132,8 @@ int offsetdcl   = 2000;
 int offsetdcr   = 2000;
 
 float batteryVoltage = BAT_NUMBER_OF_CELLS * 4.0;
+float currentL = 0;	//ROBO
+float currentR = 0;	//ROBO
 
 int curl = 0;
 // int errorl = 0;
@@ -166,6 +168,9 @@ void DMA1_Channel1_IRQHandler() {
   }
 
   //disable PWM when current limit is reached (current chopping)
+  currentL = MOTOR_AMP_CONV_DC_AMP * (float) (adc_buffer.dcl - offsetdcl);	//ROBO
+  currentR = MOTOR_AMP_CONV_DC_AMP * (float) (adc_buffer.dcr - offsetdcr);	//ROBO
+  
   if(ABS((adc_buffer.dcl - offsetdcl) * MOTOR_AMP_CONV_DC_AMP) > DC_CUR_LIMIT || timeout > TIMEOUT || enable == 0) {
     LEFT_TIM->BDTR &= ~TIM_BDTR_MOE;
     //HAL_GPIO_WritePin(LED_PORT, LED_PIN, 1);

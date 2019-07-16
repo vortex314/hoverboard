@@ -1,9 +1,8 @@
-//  Arduino Pro Mini 3.3V example
+//  Arduino Pro Mini 3.3V example code
 //  for   https://github.com/p-h-a-i-l/hoverboard-firmware-hack
 //  visit https://pionierland.de/hoverhack/ to compile your firmware online :-)
 
 //#define DEBUG_RX
-
 #include <SoftwareSerial.h>
 SoftwareSerial oSerial(2,3); // RX, TX
 

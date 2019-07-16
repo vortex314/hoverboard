@@ -1,23 +1,15 @@
-# NOTE: This project has moved to
+# better UART communication (bi-directional) and km/h speed control
 
-[BiPropellant Repos](https://github.com/bipropellant)
-All features from this repo are or will be merged to bipropellant. This branch here will not be updated anymore.
+## Compiling
 
-# Deviations to [main repo](https://github.com/NiklasFauth/hoverboard-firmware-hack)
-* Build Environment is platform.io. Old Makefile based system should work too, but not tested.
-* UART Control can be configured to Connect to USART2 or USART3
-* Added CRC Checksum to UART Control. This way, the protocol just loses sync but the board does not try to kill you anymore (at least less often)
-* UART Control and Debug can be active on the same cable
-* Extended ADC Input Control config options. Default is platooning / "transpotter"
-* ADC Input Control can coexist with all other control Methods as long as the other Method uses the other cable
-* Watchdog Implemented which monitors if main is still running. Stops motors and shuts down if not.
-* Serial Protocol implemented (very shrunk down version from [btsimonh's pidcontrol](https://github.com/btsimonh/hoverboard-firmware-hack))
-  * PWM can be set and read
-  * Humand readable ASCII Protocol can coexist with machine parseable Messages
-  * Buzzer commands
-  * Hall Interrupts for Speed Feedback
+1. Simply select this repo in my online compiler https://pionierland.de/hoverhack 
+2. Choose a default configuration or edit config.h and main.c as you like
+3. Hit the compile button :-)
 
 ---
+
+built on https://github.com/p-h-a-i-l/hoverboard-firmware-hack
+readme mainly from the original from https://github.com/NiklasFauth/hoverboard-firmware-hack
 
 # hoverboard-firmware-hack
 

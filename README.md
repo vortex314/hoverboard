@@ -6,6 +6,12 @@
 2. Choose a default configuration or edit config.h and main.c as you like
 3. Hit the compile button :-)
 
+## Controlling
+
+have a look at the Arduino example code:
+
+https://github.com/RoboDurden/hoverboard-firmware-hack/blob/master/hoverserial.ino
+
 ---
 
 built on https://github.com/p-h-a-i-l/hoverboard-firmware-hack

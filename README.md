@@ -6,7 +6,7 @@
 2. Choose a default configuration or edit config.h and main.c as you like
 3. Hit the compile button :-)
 
-## Controling
+## Controlling
 
 have a look at the Arduino example code hoverserial.ino :-)
 

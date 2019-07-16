@@ -8,7 +8,8 @@
 
 ## Controlling
 
-have a look at the Arduino example code hoverserial.ino
+have a look at the Arduino example code
+
 https://github.com/RoboDurden/hoverboard-firmware-hack/blob/master/hoverserial.ino :-)
 
 ---

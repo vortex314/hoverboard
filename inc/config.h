@@ -136,6 +136,7 @@
 // #define ADDITIONAL_CODE if (button1 && speedR < 300) { /* drive backwards */   speedR = speedR * -0.2f;     speedL = speedL * -0.2f; } else {   direction = 1; } if (button1 && speedR > 700) { /* field weakening at high speeds */   weakl = speedR - 600; /* weak should never exceed 400 or 450 MAX!! */   weakr = speedR - 600; } else {   weakl = 0;   weakr = 0; }
 
 // ###### ARMCHAIR ######
+// independent motor control to provide steering
 // #define FILTER              0.05
 // #define SPEED_COEFFICIENT   0.5
 // #define STEER_COEFFICIENT   -0.2

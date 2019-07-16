@@ -8,9 +8,9 @@
 
 ## Controlling
 
-have a look at the Arduino example code
+have a look at the Arduino example code:
 
-https://github.com/RoboDurden/hoverboard-firmware-hack/blob/master/hoverserial.ino :-)
+https://github.com/RoboDurden/hoverboard-firmware-hack/blob/master/hoverserial.ino
 
 ---
 

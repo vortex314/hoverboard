@@ -1,4 +1,4 @@
-# WARNING: seems to be a full-speed bug for the SPEED_IS_KMH control :-/
+## WARNING: there seems to be a full-speed bug for the SPEED_IS_KMH control :-/
 
 # better UART communication (bi-directional) and km/h speed control
 

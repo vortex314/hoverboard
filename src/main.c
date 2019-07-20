@@ -444,23 +444,30 @@ int main(void) {
     #endif
 
 #ifdef SPEED_IS_KMH
-	long iSpeed = (HallData[0].HallSpeed_mm_per_s + HallData[1].HallSpeed_mm_per_s)/-2;	// mm/s
+	long iSpeed =   HallData[0].HallSpeed_mm_per_s > HallData[1].HallSpeed_mm_per_s ? -HallData[0].HallSpeed_mm_per_s :- HallData[1].HallSpeed_mm_per_s;
+	//long iSpeed = (HallData[0].HallSpeed_mm_per_s + HallData[1].HallSpeed_mm_per_s)/-2;	// mm/s
 	long iSpeed_Goal = (cmd2 * 1000) / 36;
 
 	if (	(abs(iSpeed_Goal) < 56)	&& (abs(cmd2Goal) < 50)	)	// 2 = 0.2 km/h
 	{
 	    speed = cmd2Goal = 0;
 	}	
-	else 
-	if (iSpeed > (iSpeed_Goal + 28))	// 28 = 27.777 = 0.1 km/h
+#ifdef MAX_RECUPERATION
+	else if ((currentL+currentR)/2 < -MAX_RECUPERATION)
 	{
-		cmd2Goal -= CLAMP((iSpeed-iSpeed_Goal)/28,1,3);
+		cmd2Goal += 5;
+		if (cmd2Goal > 1000)	cmd2Goal = 1000;
+	}
+#endif
+	else if (iSpeed > (iSpeed_Goal + 56))	// 28 = 27.777 = 0.1 km/h
+	{
+		cmd2Goal -= CLAMP((iSpeed-iSpeed_Goal)/56,  1,3);
 		if (cmd2Goal < -1000)	cmd2Goal = -1000;
 	}
-	else if (iSpeed < (iSpeed_Goal -28))
+	else if (iSpeed < (iSpeed_Goal -56))
 	{
 		//cmd2Goal += 3;
-		cmd2Goal += CLAMP((iSpeed_Goal-iSpeed)/28,1,3);
+		cmd2Goal += CLAMP((iSpeed_Goal-iSpeed)/56,  1,3);
 		if (cmd2Goal > 1000)	cmd2Goal = 1000;
 	}
     speed = cmd2Goal;

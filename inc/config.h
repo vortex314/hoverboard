@@ -117,7 +117,9 @@
 
 #define SPEED_IS_KMH		//ROBO spped is 10*km/h so 60 would be 6.0 km/h
 	// better only use with digital communication like uart 
-
+#define MAX_RECUPERATION 3.0  //ROBO increase gas when more then 3.0 amps go back into the battery
+  // ny chain drive is to loose to take more then 3 Amps :-/
+  
 #define FILTER              0.1  // lower value == softer filter. do not use values <0.01, you will get float precision issues.
 #define SPEED_COEFFICIENT   0.5  // higher value == stronger. 0.0 to ~2.0?
 #define STEER_COEFFICIENT   0.5  // higher value == stronger. if you do not want any steering, set it to 0.0; 0.0 to 1.0

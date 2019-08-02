@@ -99,7 +99,7 @@
 
 // ################ UART CONFIG ##########
 
-#if defined(CONTROL_SERIAL_NAIVE_USART2) || defined(CONTROL_SERIAL_NAIVE_USART3 || defined(DEBUG_SERIAL_USART2) || defined(DEBUG_SERIAL_USART3))
+#if defined(CONTROL_SERIAL_NAIVE_USART2) || defined(CONTROL_SERIAL_NAIVE_USART3) || defined(DEBUG_SERIAL_USART2) || defined(DEBUG_SERIAL_USART3))
 
   // old control protocol..
   //#define CONTROL_SERIAL_PROTOCOL                     // enables processing of input characters through 'protocol.c'

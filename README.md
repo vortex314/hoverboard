@@ -1,6 +1,33 @@
-## WARNING: there seems to be a full-speed bug for the SPEED_IS_KMH control :-/
+# better UART communication (bi-directional) with km/h speed control and max-recuperation
 
-# better UART communication (bi-directional) and km/h speed control
+Only use this fork when you want to control 
+
+```
+typedef struct{
+   int16_t steer;
+   int16_t speed;
+   uint32_t crc;
+} Serialcommand;
+```
+
+and/or read
+
+```
+typedef struct{
+   int16_t iSpeedL;		// 100* km/h
+   int16_t iSpeedR;		// 100* km/h
+   uint16_t iHallSkippedL;
+   uint16_t iHallSkippedR;
+   uint16_t iTemp;		// °C
+   uint16_t iVolt;		// 100* V
+   int16_t iAmpL;		// 100* A
+   int16_t iAmpR;		// 100* A
+   uint32_t crc;
+} SerialFeedback;
+```
+
+via uart !
+
 
 ## Compiling
 

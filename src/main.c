@@ -70,7 +70,7 @@ typedef struct{
    int16_t iAmpR;		// 100* A
    uint32_t crc;
 } SerialFeedback;
-volatile SerialFeedback oFeedback;
+ SerialFeedback oFeedback;  // volatile
 
 #ifdef DEBUG_SERIAL_USART3
 #define UART_DMA_CHANNEL DMA1_Channel2

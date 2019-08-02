@@ -54,7 +54,6 @@ bool SoftWatchdogActive= false;
 typedef struct{
    int16_t steer;
    int16_t speed;
-#ifdef CONTROL_SERIAL_NAIVE_CRC
    uint32_t crc;
 #endif
 } Serialcommand;
@@ -143,8 +142,8 @@ void poweroff() {
   }
 }
 
-#ifdef CONTROL_SERIAL_NAIVE_CRC
 //ROBO begin
+#if defined(CONTROL_SERIAL_NAIVE_USART2) || defined(CONTROL_SERIAL_NAIVE_USART3)
 bool checkCRC2(volatile Serialcommand* command) 
 {
 	uint8_t a[15];
@@ -173,22 +172,8 @@ bool checkCRC2(volatile Serialcommand* command)
 	setScopeChannel(1, (int)command->crc);
 	return false;
 }
-//ROBO end
-
-bool checkCRC(volatile Serialcommand* command) {
-	uint32_t crc = 0;
-	crc32((const void *)command, 4, &crc); // 4 2x uint16_t = 4 bytes
-
-	setScopeChannel(0, (int)crc);
-	setScopeChannel(1, (int)command->crc);
-
-
-	if(command->crc == crc) {
-		return true;
-	}
-	return false;
-}
 #endif
+//ROBO end
 
 int main(void) {
   HAL_Init();
@@ -416,11 +401,7 @@ int main(void) {
     #endif
 
     #if defined(CONTROL_SERIAL_NAIVE_USART2) || defined(CONTROL_SERIAL_NAIVE_USART3)
-    #ifdef CONTROL_SERIAL_NAIVE_CRC
       if(checkCRC2(&command))	//ROBO
-    #else
-      if(1)
-    #endif
       {
       cmd1 = CLAMP((int16_t)command.steer, -1000, 1000);
       cmd2 = CLAMP((int16_t)command.speed, -1000, 1000);
@@ -444,7 +425,7 @@ int main(void) {
     #endif
 
 #ifdef SPEED_IS_KMH
-	long iSpeed =   HallData[0].HallSpeed_mm_per_s > HallData[1].HallSpeed_mm_per_s ? -HallData[0].HallSpeed_mm_per_s :- HallData[1].HallSpeed_mm_per_s;
+	long iSpeed =   abs(HallData[0].HallSpeed_mm_per_s) > abs(HallData[1].HallSpeed_mm_per_s) ? -HallData[0].HallSpeed_mm_per_s : -HallData[1].HallSpeed_mm_per_s;
 	//long iSpeed = (HallData[0].HallSpeed_mm_per_s + HallData[1].HallSpeed_mm_per_s)/-2;	// mm/s
 	long iSpeed_Goal = (cmd2 * 1000) / 36;
 

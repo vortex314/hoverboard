@@ -426,9 +426,9 @@ int main(void) {
 #ifdef SPEED_IS_KMH
 	long iSpeed =   abs(HallData[0].HallSpeed_mm_per_s) > abs(HallData[1].HallSpeed_mm_per_s) ? -HallData[0].HallSpeed_mm_per_s : -HallData[1].HallSpeed_mm_per_s;
 	//long iSpeed = (HallData[0].HallSpeed_mm_per_s + HallData[1].HallSpeed_mm_per_s)/-2;	// mm/s
-	long iSpeed_Goal = (cmd2 * 1000) / 36;
+	long iSpeed_Goal = (cmd2 * 1000) / 36;  // mm_per_s
 
-	if (	(abs(iSpeed_Goal) < 56)	&& (abs(cmd2Goal) < 50)	)	// 2 = 0.2 km/h
+	if (	(abs(iSpeed_Goal) < 56)	&& (abs(cmd2Goal) < 50)	)	// iSpeed_Goal = 56 = 0.2 km/h
 	{
 	    speed = cmd2Goal = 0;
 	}	
@@ -442,16 +442,20 @@ int main(void) {
 	else if (iSpeed > (iSpeed_Goal + 56))	// 28 = 27.777 = 0.1 km/h
 	{
 		cmd2Goal -= CLAMP((iSpeed-iSpeed_Goal)/56,  1,3);
-		if (cmd2Goal < -1000)	cmd2Goal = -1000;
+    if (  (iSpeed_Goal > 56)  && (cmd2Goal < 2)  ) cmd2Goal = 2;   // don't set backward speed when iSpeed_goal is set forwards
+		else if (cmd2Goal < -1000)	cmd2Goal = -1000;
 	}
 	else if (iSpeed < (iSpeed_Goal -56))
 	{
 		//cmd2Goal += 3;
 		cmd2Goal += CLAMP((iSpeed_Goal-iSpeed)/56,  1,3);
-		if (cmd2Goal > 1000)	cmd2Goal = 1000;
+    if (  (iSpeed_Goal < -56)  && (cmd2Goal > -2)  ) cmd2Goal = -2;   // don't set forward speed when iSpeed_goal is set backwards
+		else if (cmd2Goal > 1000)	cmd2Goal = 1000;
+
 	}
-    speed = cmd2Goal;
-    steer = steer * (1.0 - FILTER) + cmd1 * FILTER;
+
+  speed = cmd2Goal;
+  steer = steer * (1.0 - FILTER) + cmd1 * FILTER;
 
 #else
     // ####### LOW-PASS FILTER #######

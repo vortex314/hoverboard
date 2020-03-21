@@ -43,7 +43,7 @@ https://github.com/RoboDurden/hoverboard-firmware-hack/blob/master/hoverserial.i
 
 ## troubleshooting
 
-With CONTROL_PPM you need to set PPM_NUM_CHANNELS in config.h to hose of your PPM trancmitter (like 10 for example). 
+With CONTROL_PPM you need to set PPM_NUM_CHANNELS in config.h to those of your PPM trancmitter (like 10 for example). 
 
 read the comments in my youtube videos: https://www.youtube.com/playlist?list=PLa9VLvJBLbTMmpslED2FMClIBv5URBMIa
 

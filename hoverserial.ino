@@ -1,10 +1,11 @@
-//  Arduino Pro Mini 3.3V example code
+//  Arduino Pro Mini 3.3V example
 //  for   https://github.com/p-h-a-i-l/hoverboard-firmware-hack
 //  visit https://pionierland.de/hoverhack/ to compile your firmware online :-)
 
 //#define DEBUG_RX
+
 #include <SoftwareSerial.h>
-SoftwareSerial oSerial(2,3); // RX, TX
+SoftwareSerial oSerial(8,9); // RX, TX
 
 typedef struct{
    int16_t steer;
@@ -52,9 +53,9 @@ void crc32(const void *data, size_t n_bytes, uint32_t* crc) {
 }
 
 
-void Send(int16_t iSpeed)
+void Send(int16_t iSpeed,int16_t iSteer)
 {
-  oCmd.steer = 0;
+  oCmd.steer = iSteer;
   oCmd.speed = iSpeed;
 
   uint32_t crc = 0;
@@ -111,6 +112,10 @@ boolean Receive()
 int iTest = 1000;
 unsigned long iTimeSend = 0;
 
+int iSpeed = 0;
+int iSpeedMax = 1000;   // for SPEED_IS_KMH in config.h use 60 for max speed of 6.0 km/h
+int iSpeedDelta = 20;   // for SPEED_IS_KMH in config.h use 2 for speed steps of 0.2 km/h 
+
 void loop(void)
 { 
   unsigned long iNow = millis();
@@ -130,12 +135,12 @@ void loop(void)
   }
 
   if (iTimeSend > iNow) return;
-
   iTimeSend = iNow + TIME_SEND;
-  Send(abs(iTest)-1000);
 
-  iTest+= 20;
-  if (iTest>2000) iTest=-2000;
+  iSpeed += iSpeedDelta;
+  if ( abs(iSpeed) >= iSpeedMax ) iSpeedDelta *= -1;
+  Send(iSpeed,0);
+
 
   digitalWrite(LED_BUILTIN, (iNow%2000)<1000);
 }

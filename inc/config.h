@@ -126,16 +126,20 @@
 // - speedR and speedL: normal driving -1000 to 1000
 // - weakr and weakl: field weakening for extra boost at high speed (speedR > 700 and speedL > 700). 0 to ~400
 
-#define SPEED_IS_KMH		//ROBO spped is 10*km/h so 60 would be 6.0 km/h
+//#define SPEED_IS_KMH		//ROBO spped is 10*km/h so 60 would be 6.0 km/h
 	// better only use with digital communication like uart 
-#define MAX_RECUPERATION 3.0  //ROBO increase gas when more then 3.0 amps go back into the battery
+
+//#define MAX_RECUPERATION 3.0  //ROBO increase gas when more then 3.0 amps go back into the battery
   // ny chain drive is to loose to take more then 3 Amps :-/
   
 #define FILTER              0.01  // lower value == softer filter. do not use values <0.01, you will get float precision issues.
 #define SPEED_COEFFICIENT   0.5  // higher value == stronger. 0.0 to ~2.0?
 #define STEER_COEFFICIENT   0.5  // higher value == stronger. if you do not want any steering, set it to 0.0; 0.0 to 1.0
 #define INVERT_R_DIRECTION
+	// BUG: if comment INVERT_R_DIRECTION you might need to invert "long iSpeed" in main.c
 #define INVERT_L_DIRECTION
+	// BUG: if comment INVERT_L_DIRECTION you might need to invert "long iSpeed" in main.c
+
 //#define SWITCH_WHEELS            // switch right and left wheel. Watch out, you probably also need to invert directions.
 
 #define BEEPS_BACKWARD 1    // 0 or 1

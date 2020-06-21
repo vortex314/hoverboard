@@ -432,8 +432,23 @@ int main(void) {
     #endif
 
 #ifdef SPEED_IS_KMH
-	long iSpeed =   abs(HallData[0].HallSpeed_mm_per_s) > abs(HallData[1].HallSpeed_mm_per_s) ? -HallData[0].HallSpeed_mm_per_s : -HallData[1].HallSpeed_mm_per_s;
-  // invert speed in hallinterrupts.c -> robo
+	long iSpeed;
+  if (abs(HallData[0].HallSpeed_mm_per_s) > abs(HallData[1].HallSpeed_mm_per_s))
+  {
+    #ifdef INVERT_L_DIRECTION
+      iSpeed = -HallData[0].HallSpeed_mm_per_s;
+    #else
+      iSpeed = HallData[0].HallSpeed_mm_per_s;
+    #endif
+  } 
+  else
+  {
+    #ifdef INVERT_R_DIRECTION
+      iSpeed = -HallData[1].HallSpeed_mm_per_s;
+    #else
+      iSpeed = HallData[1].HallSpeed_mm_per_s;
+    #endif
+  } 
 
 	long iSpeed_Goal = (cmd2 * 1000) / 36;  // mm_per_s
 

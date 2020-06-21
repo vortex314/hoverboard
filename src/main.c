@@ -46,7 +46,9 @@ int cmd1, cmd1_ADC;  // normalized input values. -1000 to 1000
 int cmd2, cmd2_ADC;
 int cmd3;
 
-int cmd2Goal;	// goal speed for SPEED_IS_KMH
+#ifdef SPEED_IS_KMH // ROBO
+  int cmd2Goal;	// goal speed for SPEED_IS_KMH
+#endif
 
 bool ADCcontrolActive = false;
 bool SoftWatchdogActive= false;
@@ -158,7 +160,7 @@ bool checkCRC2(volatile Serialcommand* command)
 		{
 			memcpy((void*)command,(void*)pCmd,8);
 			setScopeChannel(0, 1);
-			if (	(abs(pCmd->steer)>1000) || (abs(pCmd->steer)>1000)	)
+			if (	(abs(pCmd->steer)>1000) || (abs(pCmd->speed)>1000)	)
 			{
 				setScopeChannel(1,255);
 				return false;
@@ -225,6 +227,11 @@ int main(void) {
 
   int lastSpeedL = 0, lastSpeedR = 0;
   int speedL = 0, speedR = 0;
+
+  #ifdef SPEED_IS_KMH // ROBO
+    cmd2Goal = 0;	// goal speed for SPEED_IS_KMH
+  #endif
+
 
   #ifdef HALL_INTERRUPTS
     // enables interrupt reading of hall sensors for dead reconing wheel position.
@@ -400,11 +407,7 @@ int main(void) {
     #endif
 
     #if defined(CONTROL_SERIAL_NAIVE_USART2) || defined(CONTROL_SERIAL_NAIVE_USART3)
-      if(checkCRC2(&command))	//ROBO
-      {
-      cmd1 = CLAMP((int16_t)command.steer, -1000, 1000);
-      cmd2 = CLAMP((int16_t)command.speed, -1000, 1000);
-      } else
+      if(!checkCRC2(&command))	//ROBO
       {
     	  cmd1 = 0;
     	  cmd2 = 0;
@@ -424,12 +427,9 @@ int main(void) {
     #endif
 
 #ifdef SPEED_IS_KMH
-	long iSpeed =   abs(HallData[0].HallSpeed_mm_per_s) > abs(HallData[1].HallSpeed_mm_per_s) ? -HallData[0].HallSpeed_mm_per_s : -HallData[1].HallSpeed_mm_per_s;
-
+	long iSpeed =   abs(HallData[0].HallSpeed_mm_per_s) > abs(HallData[1].HallSpeed_mm_per_s) ? HallData[0].HallSpeed_mm_per_s : HallData[1].HallSpeed_mm_per_s;
   // invert speed in hallinterrupts.c -> robo
 
-  
-	//long iSpeed = (HallData[0].HallSpeed_mm_per_s + HallData[1].HallSpeed_mm_per_s)/-2;	// mm/s
 	long iSpeed_Goal = (cmd2 * 1000) / 36;  // mm_per_s
 
 	if (	(abs(iSpeed_Goal) < 56)	&& (abs(cmd2Goal) < 50)	)	// iSpeed_Goal = 56 = 0.2 km/h

@@ -257,7 +257,6 @@ void HallInterruptsInterrupt(void){
             local_hall_params[i].last_hall_time = local_hall_params[i].hall_time;
         }
     }
-/*
     // ROBO
     #ifdef INVERT_L_DIRECTION
         HallData[0].HallSpeed_mm_per_s *= -1;
@@ -265,7 +264,6 @@ void HallInterruptsInterrupt(void){
     #ifdef INVERT_R_DIRECTION
         HallData[1].HallSpeed_mm_per_s *= -1;
     #endif
-*/
 }
 
 

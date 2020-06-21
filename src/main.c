@@ -407,7 +407,12 @@ int main(void) {
     #endif
 
     #if defined(CONTROL_SERIAL_NAIVE_USART2) || defined(CONTROL_SERIAL_NAIVE_USART3)
-      if(!checkCRC2(&command))	//ROBO
+      if(checkCRC2(&command))	//ROBO
+      {
+        cmd1 = command.steer;
+        cmd2 = command.speed;
+      }
+      else
       {
     	  cmd1 = 0;
     	  cmd2 = 0;
@@ -427,14 +432,14 @@ int main(void) {
     #endif
 
 #ifdef SPEED_IS_KMH
-	long iSpeed =   abs(HallData[0].HallSpeed_mm_per_s) > abs(HallData[1].HallSpeed_mm_per_s) ? HallData[0].HallSpeed_mm_per_s : HallData[1].HallSpeed_mm_per_s;
+	long iSpeed =   abs(HallData[0].HallSpeed_mm_per_s) > abs(HallData[1].HallSpeed_mm_per_s) ? -HallData[0].HallSpeed_mm_per_s : -HallData[1].HallSpeed_mm_per_s;
   // invert speed in hallinterrupts.c -> robo
 
 	long iSpeed_Goal = (cmd2 * 1000) / 36;  // mm_per_s
 
 	if (	(abs(iSpeed_Goal) < 56)	&& (abs(cmd2Goal) < 50)	)	// iSpeed_Goal = 56 = 0.2 km/h
 	{
-	    speed = cmd2Goal = 0;
+	    cmd2 = cmd2Goal = 0;
 	}	
 #ifdef MAX_RECUPERATION
 	else if ((currentL+currentR)/2 < -MAX_RECUPERATION)

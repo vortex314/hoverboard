@@ -10,7 +10,7 @@
 #define DELAY_IN_MAIN_LOOP 5        // in ms. default 5. it is independent of all the timing critical stuff. do not touch if you do not know what you are doing.
 
 #define TIMEOUT                5    // number of wrong / missing input commands before emergency off
-#define SOFTWATCHDOG_TIMEOUT 100    // Watchdog, Monitors main loop. Stops motors and shuts down when not called after xx ms.
+// #define SOFTWATCHDOG_TIMEOUT 100    // Watchdog, Monitors main loop. Stops motors and shuts down when not called after xx ms.
 
 // ############################### GENERAL ###############################
 
@@ -61,8 +61,8 @@
 // ############################### CONTROL METHOD ###############################
 
 // ###### CONTROL VIA UART (serial) ######
-//#define CONTROL_SERIAL_NAIVE_USART2               // left sensor board cable, disable if ADC or PPM is used!
-#define CONTROL_SERIAL_NAIVE_USART3               // right sensor board cable, disable if I2C (nunchuck or lcd) is used!
+// #define CONTROL_SERIAL_NAIVE_USART2               // left sensor board cable, disable if ADC or PPM is used!
+//#define CONTROL_SERIAL_NAIVE_USART3               // right sensor board cable, disable if I2C (nunchuck or lcd) is used!
 
 // ###### CONTROL VIA RC REMOTE ######
 // left sensor board cable. Channel 1: steering, Channel 2: speed.
@@ -106,10 +106,10 @@
   //#define SERIAL_USART2_IT                        // Interface for CONTROL_SERIAL_PROTOCOL
   //#define SERIAL_USART3_IT                          // Interface for CONTROL_SERIAL_PROTOCOL
 
-  #define USART2_BAUD       9600                   // UART baud rate
+  #define USART2_BAUD       115200                   // UART baud rate
   #define USART2_WORDLENGTH UART_WORDLENGTH_8B      // UART_WORDLENGTH_8B or UART_WORDLENGTH_9B
 
-  #define USART3_BAUD       9600                  // UART baud rate
+  #define USART3_BAUD       115200                  // UART baud rate
   #define USART3_WORDLENGTH UART_WORDLENGTH_8B      // UART_WORDLENGTH_8B or UART_WORDLENGTH_9B
 
   #define SERIAL_USART_IT_BUFFERTYPE  unsigned char // char or short

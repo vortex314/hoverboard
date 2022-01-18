@@ -11,16 +11,26 @@ extern "C" void controlLoop();
 extern "C" void controlInit();
 Thread *controlThread;
 TimerSource *controlTimer;
+TimerSource *reportTimer;
+
 Uart *uart2;
 extern UART_HandleTypeDef huart2;
+Sink<int> *reportSpeed;
 
+extern int cmd2;
+extern int cmd1;
 extern int speed;
 extern int steer;
+
+uint32_t counter = 0;
+
+Log logger;
 
 extern "C" void app_main_init()
 {
     spineThread = new Thread("spineThread");
     uart2 = new Uart(*spineThread, &huart2);
+
     uart2->init();
     INFO("app_main() entry");
     Sys::hostname("hover");
@@ -32,19 +42,48 @@ extern "C" void app_main_init()
 
     controlThread = new Thread("controlThread");
     controlTimer = new TimerSource(*controlThread, 5, true, "controlTimer");
+    reportTimer = new TimerSource(*controlThread, 100, true, "controlTimer");
     *controlTimer >> [](const TimerMsg &)
     { controlLoop(); };
     controlInit();
     spine->init();
-    spine->subscriber<int>("motor/speed") >> [&](const int &w)
+    spine->subscriber<int32_t>("motor/speed") >>
+        [&](const int32_t &w)
     {
-        speed = w;
-        INFO("%d", w);
+        cmd2 = w;
+        INFO("speed %d", w);
     };
-    Sink<int>& reportSpeed = spine->publisher<int>("motor/speed");
-    controlTimer >> [reportSpeed](const TimerMsg& )
+    spine->subscriber<int32_t>("motor/steer") >>
+        [&](const int32_t &w)
     {
-        reportSpeed.on(speed);
+        cmd1 = w;
+        INFO("steer %d", w);
+    };
+    *reportTimer >> [&](const TimerMsg &)
+    {
+        switch (counter++ % 4)
+        {
+        case 0:
+        {
+            spine->publish<int>("src/hover/motor/speedTarget", cmd2);
+            break;
+        }
+        case 1:
+        {
+            spine->publish<int>("src/hover/motor/speedValue", speed);
+            break;
+        }
+        case 2:
+        {
+            spine->publish<int>("src/hover/motor/steerTarget", cmd1);
+            break;
+        }
+        case 3:
+        {
+            spine->publish<int>("src/hover/motor/steerValue", steer);
+            break;
+        }
+        }
     };
     INFO("app_main() exit");
     //   uart2->init();

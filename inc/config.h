@@ -50,7 +50,7 @@
 // ############################### SERIAL DEBUG ###############################
 
 //#define DEBUG_SERIAL_USART2       // left sensor board cable, disable if ADC or PPM is used!
-#define DEBUG_SERIAL_USART3         // right sensor board cable, disable if I2C (nunchuck or lcd) is used!
+//#define DEBUG_SERIAL_USART3         // right sensor board cable, disable if I2C (nunchuck or lcd) is used!
 
 //#define DEBUG_SERIAL_SERVOTERM
 //#define DEBUG_SERIAL_ASCII          // "1:345 2:1337 3:0 4:0 5:0 6:0 7:0 8:0\r\n"
@@ -62,7 +62,7 @@
 
 // ###### CONTROL VIA UART (serial) ######
 // #define CONTROL_SERIAL_NAIVE_USART2               // left sensor board cable, disable if ADC or PPM is used!
-//#define CONTROL_SERIAL_NAIVE_USART3               // right sensor board cable, disable if I2C (nunchuck or lcd) is used!
+#define CONTROL_SERIAL_NAIVE_USART3               // right sensor board cable, disable if I2C (nunchuck or lcd) is used!
 
 // ###### CONTROL VIA RC REMOTE ######
 // left sensor board cable. Channel 1: steering, Channel 2: speed.
@@ -102,9 +102,9 @@
 #if defined(CONTROL_SERIAL_NAIVE_USART2) || defined(CONTROL_SERIAL_NAIVE_USART3) || defined(DEBUG_SERIAL_USART2) || defined(DEBUG_SERIAL_USART3)
 
   // old control protocol..
-  //#define CONTROL_SERIAL_PROTOCOL                     // enables processing of input characters through 'protocol.c'
-  //#define SERIAL_USART2_IT                        // Interface for CONTROL_SERIAL_PROTOCOL
-  //#define SERIAL_USART3_IT                          // Interface for CONTROL_SERIAL_PROTOCOL
+  // #define CONTROL_SERIAL_PROTOCOL                     // enables processing of input characters through 'protocol.c'
+  // #define SERIAL_USART2_IT                        // Interface for CONTROL_SERIAL_PROTOCOL
+  // #define SERIAL_USART3_IT                          // Interface for CONTROL_SERIAL_PROTOCOL
 
   #define USART2_BAUD       115200                   // UART baud rate
   #define USART2_WORDLENGTH UART_WORDLENGTH_8B      // UART_WORDLENGTH_8B or UART_WORDLENGTH_9B

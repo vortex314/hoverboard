@@ -447,7 +447,7 @@ void controlLoop()
 #endif
 
 #if defined(CONTROL_SERIAL_NAIVE_USART2) || defined(CONTROL_SERIAL_NAIVE_USART3)
-    if (checkCRC2(&command)) //ROBO
+ /*   if (checkCRC2(&command)) //ROBO
     {
       cmd1 = command.steer;
       cmd2 = command.speed;
@@ -456,7 +456,8 @@ void controlLoop()
     {
       cmd1 = 0;
       cmd2 = 0;
-    }
+    }*/
+    //cmd1=50;
     //cmd2 = -100;
 
     timeout = 0;

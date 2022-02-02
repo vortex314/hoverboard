@@ -29,6 +29,7 @@
 #include "crc32.h"
 #include <stdbool.h>
 #include <string.h> //robo
+#include <properties.h>
 
 void SystemClock_Config(void);
 
@@ -75,6 +76,8 @@ typedef struct
   uint32_t crc;
 } SerialFeedback;
 SerialFeedback oFeedback; // volatile
+
+Properties properties = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 #ifdef DEBUG_SERIAL_USART3
 #define UART_DMA_CHANNEL DMA1_Channel2
@@ -312,142 +315,142 @@ int main(void)
 }
 
 uint16_t iLog = 0;
-float board_temp_adc_filtered ;
+float board_temp_adc_filtered;
 float board_temp_deg_c;
 int lastSpeedL = 0, lastSpeedR = 0;
 int speedL = 0, speedR = 0;
 
-void controlInit(){
- board_temp_adc_filtered = (float)adc_buffer.temp;
+void controlInit()
+{
+  board_temp_adc_filtered = (float)adc_buffer.temp;
 }
 
 void controlLoop()
 {
 
-
 // TODO: Method to select which input is used for Protocol when both are active
 #if defined(SERIAL_USART2_IT) && defined(CONTROL_SERIAL_PROTOCOL)
-    if (!enable_immediate)
-      timeout++;
-    while (serial_usart_buffer_count(&usart2_it_RXbuffer) > 0)
-    {
-      SERIAL_USART_IT_BUFFERTYPE inputc = serial_usart_buffer_pop(&usart2_it_RXbuffer);
-      protocol_byte((unsigned char)inputc);
-    }
-    cmd1 = PwmSteerCmd.steer;
-    cmd2 = PwmSteerCmd.base_pwm;
+  if (!enable_immediate)
+    timeout++;
+  while (serial_usart_buffer_count(&usart2_it_RXbuffer) > 0)
+  {
+    SERIAL_USART_IT_BUFFERTYPE inputc = serial_usart_buffer_pop(&usart2_it_RXbuffer);
+    protocol_byte((unsigned char)inputc);
+  }
+  cmd1 = PwmSteerCmd.steer;
+  cmd2 = PwmSteerCmd.base_pwm;
 #elif defined(SERIAL_USART3_IT) && defined(CONTROL_SERIAL_PROTOCOL)
-    if (!enable_immediate)
-      timeout++;
-    while (serial_usart_buffer_count(&usart3_it_RXbuffer) > 0)
-    {
-      SERIAL_USART_IT_BUFFERTYPE inputc = serial_usart_buffer_pop(&usart3_it_RXbuffer);
-      protocol_byte((unsigned char)inputc);
-    }
-    cmd1 = PwmSteerCmd.steer;
-    cmd2 = PwmSteerCmd.base_pwm;
+  if (!enable_immediate)
+    timeout++;
+  while (serial_usart_buffer_count(&usart3_it_RXbuffer) > 0)
+  {
+    SERIAL_USART_IT_BUFFERTYPE inputc = serial_usart_buffer_pop(&usart3_it_RXbuffer);
+    protocol_byte((unsigned char)inputc);
+  }
+  cmd1 = PwmSteerCmd.steer;
+  cmd2 = PwmSteerCmd.base_pwm;
 #endif
 
 #ifdef CONTROL_NUNCHUCK
-    Nunchuck_Read();
-    cmd1 = CLAMP((nunchuck_data[0] - 127) * 8, -1000, 1000); // x - axis. Nunchuck joystick readings range 30 - 230
-    cmd2 = CLAMP((nunchuck_data[1] - 128) * 8, -1000, 1000); // y - axis
+  Nunchuck_Read();
+  cmd1 = CLAMP((nunchuck_data[0] - 127) * 8, -1000, 1000); // x - axis. Nunchuck joystick readings range 30 - 230
+  cmd2 = CLAMP((nunchuck_data[1] - 128) * 8, -1000, 1000); // y - axis
 
-    button1 = (uint8_t)nunchuck_data[5] & 1;
-    button2 = (uint8_t)(nunchuck_data[5] >> 1) & 1;
+  button1 = (uint8_t)nunchuck_data[5] & 1;
+  button2 = (uint8_t)(nunchuck_data[5] >> 1) & 1;
 #endif
 
 #ifdef CONTROL_PPM
-    cmd1 = CLAMP((ppm_captured_value[0] - 500) * 2, -1000, 1000);
-    cmd2 = CLAMP((ppm_captured_value[1] - 500) * 2, -1000, 1000);
-    button1 = ppm_captured_value[5] > 500;
-    float scale = ppm_captured_value[2] / 1000.0f;
+  cmd1 = CLAMP((ppm_captured_value[0] - 500) * 2, -1000, 1000);
+  cmd2 = CLAMP((ppm_captured_value[1] - 500) * 2, -1000, 1000);
+  button1 = ppm_captured_value[5] > 500;
+  float scale = ppm_captured_value[2] / 1000.0f;
 #endif
 
 #ifdef CONTROL_ADC
-    // ADC values range: 0-4095, see ADC-calibration in config.h
+  // ADC values range: 0-4095, see ADC-calibration in config.h
 
 #ifdef ADC_SWITCH_CHANNELS
 
-    if (adc_buffer.l_rx2 < ADC2_ZERO)
-    {
-      cmd1_ADC = (CLAMP(adc_buffer.l_rx2, ADC2_MIN, ADC2_ZERO) - ADC2_ZERO) / ((ADC2_ZERO - ADC2_MIN) / ADC2_MULT_NEG); // ADC2 - Steer
-    }
-    else
-    {
-      cmd1_ADC = (CLAMP(adc_buffer.l_rx2, ADC2_ZERO, ADC2_MAX) - ADC2_ZERO) / ((ADC2_MAX - ADC2_ZERO) / ADC2_MULT_POS); // ADC2 - Steer
-    }
+  if (adc_buffer.l_rx2 < ADC2_ZERO)
+  {
+    cmd1_ADC = (CLAMP(adc_buffer.l_rx2, ADC2_MIN, ADC2_ZERO) - ADC2_ZERO) / ((ADC2_ZERO - ADC2_MIN) / ADC2_MULT_NEG); // ADC2 - Steer
+  }
+  else
+  {
+    cmd1_ADC = (CLAMP(adc_buffer.l_rx2, ADC2_ZERO, ADC2_MAX) - ADC2_ZERO) / ((ADC2_MAX - ADC2_ZERO) / ADC2_MULT_POS); // ADC2 - Steer
+  }
 
-    if (adc_buffer.l_tx2 < ADC1_ZERO)
-    {
-      cmd2_ADC = (CLAMP(adc_buffer.l_tx2, ADC1_MIN, ADC1_ZERO) - ADC1_ZERO) / ((ADC1_ZERO - ADC1_MIN) / ADC1_MULT_NEG); // ADC1 - Speed
-    }
-    else
-    {
-      cmd2_ADC = (CLAMP(adc_buffer.l_tx2, ADC1_ZERO, ADC1_MAX) - ADC1_ZERO) / ((ADC1_MAX - ADC1_ZERO) / ADC1_MULT_POS); // ADC1 - Speed
-    }
+  if (adc_buffer.l_tx2 < ADC1_ZERO)
+  {
+    cmd2_ADC = (CLAMP(adc_buffer.l_tx2, ADC1_MIN, ADC1_ZERO) - ADC1_ZERO) / ((ADC1_ZERO - ADC1_MIN) / ADC1_MULT_NEG); // ADC1 - Speed
+  }
+  else
+  {
+    cmd2_ADC = (CLAMP(adc_buffer.l_tx2, ADC1_ZERO, ADC1_MAX) - ADC1_ZERO) / ((ADC1_MAX - ADC1_ZERO) / ADC1_MULT_POS); // ADC1 - Speed
+  }
 
-    if ((adc_buffer.l_tx2 < ADC_OFF_START) || (adc_buffer.l_tx2 > ADC_OFF_END))
+  if ((adc_buffer.l_tx2 < ADC_OFF_START) || (adc_buffer.l_tx2 > ADC_OFF_END))
+  {
+    ADCcontrolActive = true;
+  }
+  else
+  {
+    if (ADCcontrolActive)
     {
-      ADCcontrolActive = true;
+      cmd1 = 0;
+      cmd2 = 0;
     }
-    else
-    {
-      if (ADCcontrolActive)
-      {
-        cmd1 = 0;
-        cmd2 = 0;
-      }
-      ADCcontrolActive = false;
-    }
+    ADCcontrolActive = false;
+  }
 
 #else
 
-    if (adc_buffer.l_tx2 < ADC1_ZERO)
-    {
-      cmd1_ADC = (CLAMP(adc_buffer.l_tx2, ADC1_MIN, ADC1_ZERO) - ADC1_ZERO) / ((ADC1_ZERO - ADC1_MIN) / ADC1_MULT_NEG); // ADC1 - Steer
-    }
-    else
-    {
-      cmd1_ADC = (CLAMP(adc_buffer.l_tx2, ADC1_ZERO, ADC1_MAX) - ADC1_ZERO) / ((ADC1_MAX - ADC1_ZERO) / ADC1_MULT_POS); // ADC1 - Steer
-    }
+  if (adc_buffer.l_tx2 < ADC1_ZERO)
+  {
+    cmd1_ADC = (CLAMP(adc_buffer.l_tx2, ADC1_MIN, ADC1_ZERO) - ADC1_ZERO) / ((ADC1_ZERO - ADC1_MIN) / ADC1_MULT_NEG); // ADC1 - Steer
+  }
+  else
+  {
+    cmd1_ADC = (CLAMP(adc_buffer.l_tx2, ADC1_ZERO, ADC1_MAX) - ADC1_ZERO) / ((ADC1_MAX - ADC1_ZERO) / ADC1_MULT_POS); // ADC1 - Steer
+  }
 
-    if (adc_buffer.l_rx2 < ADC2_ZERO)
-    {
-      cmd2_ADC = (CLAMP(adc_buffer.l_rx2, ADC2_MIN, ADC2_ZERO) - ADC2_ZERO) / ((ADC2_ZERO - ADC2_MIN) / ADC2_MULT_NEG); // ADC2 - Speed
-    }
-    else
-    {
-      cmd2_ADC = (CLAMP(adc_buffer.l_rx2, ADC2_ZERO, ADC2_MAX) - ADC2_ZERO) / ((ADC2_MAX - ADC2_ZERO) / ADC2_MULT_POS); // ADC2 - Speed
-    }
+  if (adc_buffer.l_rx2 < ADC2_ZERO)
+  {
+    cmd2_ADC = (CLAMP(adc_buffer.l_rx2, ADC2_MIN, ADC2_ZERO) - ADC2_ZERO) / ((ADC2_ZERO - ADC2_MIN) / ADC2_MULT_NEG); // ADC2 - Speed
+  }
+  else
+  {
+    cmd2_ADC = (CLAMP(adc_buffer.l_rx2, ADC2_ZERO, ADC2_MAX) - ADC2_ZERO) / ((ADC2_MAX - ADC2_ZERO) / ADC2_MULT_POS); // ADC2 - Speed
+  }
 
-    if ((adc_buffer.l_rx2 < ADC_OFF_START) || (adc_buffer.l_rx2 > ADC_OFF_END))
+  if ((adc_buffer.l_rx2 < ADC_OFF_START) || (adc_buffer.l_rx2 > ADC_OFF_END))
+  {
+    ADCcontrolActive = true;
+  }
+  else
+  {
+    if (ADCcontrolActive)
     {
-      ADCcontrolActive = true;
+      cmd1 = 0;
+      cmd2 = 0;
     }
-    else
-    {
-      if (ADCcontrolActive)
-      {
-        cmd1 = 0;
-        cmd2 = 0;
-      }
-      ADCcontrolActive = false;
-    }
+    ADCcontrolActive = false;
+  }
 
 #endif
 
 #ifdef ADC_REVERSE_STEER
-    cmd1_ADC = -cmd1_ADC;
+  cmd1_ADC = -cmd1_ADC;
 #endif
 
-    // use ADCs as button inputs:
-    button1_ADC = (uint8_t)(adc_buffer.l_tx2 > 2000); // ADC1
-    button2_ADC = (uint8_t)(adc_buffer.l_rx2 > 2000); // ADC2
+  // use ADCs as button inputs:
+  button1_ADC = (uint8_t)(adc_buffer.l_tx2 > 2000); // ADC1
+  button2_ADC = (uint8_t)(adc_buffer.l_rx2 > 2000); // ADC2
 #endif
 
 #if defined(CONTROL_SERIAL_NAIVE_USART2) || defined(CONTROL_SERIAL_NAIVE_USART3)
- /*   if (checkCRC2(&command)) //ROBO
+  /*   if (checkCRC2(&command)) //ROBO
     {
       cmd1 = command.steer;
       cmd2 = command.speed;
@@ -457,137 +460,150 @@ void controlLoop()
       cmd1 = 0;
       cmd2 = 0;
     }*/
-    //cmd1=50;
-    //cmd2 = -100;
+  //cmd1=50;
+  //cmd2 = -100;
 
-    timeout = 0;
+  timeout = 0;
 #endif
 
 #if defined CONTROL_ADC
-    if (ADCcontrolActive)
-    {
-      cmd1 = cmd1_ADC;
-      cmd2 = cmd2_ADC;
-      timeout = 0;
-    }
+  if (ADCcontrolActive)
+  {
+    cmd1 = cmd1_ADC;
+    cmd2 = cmd2_ADC;
+    timeout = 0;
+  }
 #endif
 
 #ifdef SPEED_IS_KMH
-    long iSpeed;
-    if (abs(HallData[0].HallSpeed_mm_per_s) > abs(HallData[1].HallSpeed_mm_per_s))
-    {
+  long iSpeed;
+  if (abs(HallData[0].HallSpeed_mm_per_s) > abs(HallData[1].HallSpeed_mm_per_s))
+  {
 #ifdef INVERT_L_DIRECTION
-      iSpeed = -HallData[0].HallSpeed_mm_per_s;
+    iSpeed = -HallData[0].HallSpeed_mm_per_s;
 #else
-      iSpeed = HallData[0].HallSpeed_mm_per_s;
+    iSpeed = HallData[0].HallSpeed_mm_per_s;
 #endif
-    }
-    else
-    {
+  }
+  else
+  {
 #ifdef INVERT_R_DIRECTION
-      iSpeed = -HallData[1].HallSpeed_mm_per_s;
+    iSpeed = -HallData[1].HallSpeed_mm_per_s;
 #else
-      iSpeed = HallData[1].HallSpeed_mm_per_s;
+    iSpeed = HallData[1].HallSpeed_mm_per_s;
 #endif
-    }
+  }
 
-    long iSpeed_Goal = (cmd2 * 1000) / 36; // mm_per_s
+  long iSpeed_Goal = (cmd2 * 1000) / 36; // mm_per_s
 
-    if ((abs(iSpeed_Goal) < 56) && (abs(cmd2Goal) < 50)) // iSpeed_Goal = 56 = 0.2 km/h
-    {
-      cmd2 = cmd2Goal = 0;
-    }
+  if ((abs(iSpeed_Goal) < 56) && (abs(cmd2Goal) < 50)) // iSpeed_Goal = 56 = 0.2 km/h
+  {
+    cmd2 = cmd2Goal = 0;
+  }
 #ifdef MAX_RECUPERATION
-    else if ((currentL + currentR) / 2 < -MAX_RECUPERATION)
-    {
-      cmd2Goal += 5;
-      if (cmd2Goal > 1000)
-        cmd2Goal = 1000;
-    }
+  else if ((currentL + currentR) / 2 < -MAX_RECUPERATION)
+  {
+    cmd2Goal += 5;
+    if (cmd2Goal > 1000)
+      cmd2Goal = 1000;
+  }
 #endif
-    else if (iSpeed > (iSpeed_Goal + 56)) // 28 = 27.777 = 0.1 km/h
-    {
-      cmd2Goal -= CLAMP((iSpeed - iSpeed_Goal) / 56, 1, 3);
-      if ((iSpeed_Goal > 56) && (cmd2Goal < 2))
-        cmd2Goal = 2; // don't set backward speed when iSpeed_goal is set forwards
-      else if (cmd2Goal < -1000)
-        cmd2Goal = -1000;
-    }
-    else if (iSpeed < (iSpeed_Goal - 56))
-    {
-      //cmd2Goal += 3;
-      cmd2Goal += CLAMP((iSpeed_Goal - iSpeed) / 56, 1, 3);
-      if ((iSpeed_Goal < -56) && (cmd2Goal > -2))
-        cmd2Goal = -2; // don't set forward speed when iSpeed_goal is set backwards
-      else if (cmd2Goal > 1000)
-        cmd2Goal = 1000;
-    }UART2_Init
+  else if (iSpeed > (iSpeed_Goal + 56)) // 28 = 27.777 = 0.1 km/h
+  {
+    cmd2Goal -= CLAMP((iSpeed - iSpeed_Goal) / 56, 1, 3);
+    if ((iSpeed_Goal > 56) && (cmd2Goal < 2))
+      cmd2Goal = 2; // don't set backward speed when iSpeed_goal is set forwards
+    else if (cmd2Goal < -1000)
+      cmd2Goal = -1000;
+  }
+  else if (iSpeed < (iSpeed_Goal - 56))
+  {
+    //cmd2Goal += 3;
+    cmd2Goal += CLAMP((iSpeed_Goal - iSpeed) / 56, 1, 3);
+    if ((iSpeed_Goal < -56) && (cmd2Goal > -2))
+      cmd2Goal = -2; // don't set forward speed when iSpeed_goal is set backwards
+    else if (cmd2Goal > 1000)
+      cmd2Goal = 1000;
+  }
+  UART2_Init
 
-    speed = cmd2Goal;
-    steer = steer * (1.0 - FILTER) + cmd1 * FILTER;
+      speed = cmd2Goal;
+  steer = steer * (1.0 - FILTER) + cmd1 * FILTER;
 
 #else
-    // ####### LOW-PASS FILTER #######
-    steer = steer * (1.0 - FILTER) + cmd1 * FILTER;
-    speed = speed * (1.0 - FILTER) + cmd2 * FILTER;
+  // ####### copy properties
+  cmd2 = CLAMP(properties.speedTarget, -1000, 1000);
+  cmd1 = CLAMP(properties.steerTarget, -1000, 1000);
+  // ####### LOW-PASS FILTER #######
+  steer = steer * (1.0 - FILTER) + cmd1 * FILTER;
+  speed = speed * (1.0 - FILTER) + cmd2 * FILTER;
 #endif
 
 // ####### MIXER #######
 #ifdef SWITCH_WHEELS
-    speedL = CLAMP(speed * SPEED_COEFFICIENT - steer * STEER_COEFFICIENT, -1000, 1000);
-    speedR = CLAMP(speed * SPEED_COEFFICIENT + steer * STEER_COEFFICIENT, -1000, 1000);
+  speedL = CLAMP(speed * SPEED_COEFFICIENT - steer * STEER_COEFFICIENT, -1000, 1000);
+  speedR = CLAMP(speed * SPEED_COEFFICIENT + steer * STEER_COEFFICIENT, -1000, 1000);
 #else
-    speedR = CLAMP(speed * SPEED_COEFFICIENT - steer * STEER_COEFFICIENT, -1000, 1000);
-    speedL = CLAMP(speed * SPEED_COEFFICIENT + steer * STEER_COEFFICIENT, -1000, 1000);
+  speedR = CLAMP(speed * SPEED_COEFFICIENT - steer * STEER_COEFFICIENT, -1000, 1000);
+  speedL = CLAMP(speed * SPEED_COEFFICIENT + steer * STEER_COEFFICIENT, -1000, 1000);
 #endif
 
 #ifdef ADDITIONAL_CODE
-    ADDITIONAL_CODE;
+  ADDITIONAL_CODE;
 #endif
 
-    // ####### SET OUTPUTS #######
-    if ((speedL < lastSpeedL + 50 && speedL > lastSpeedL - 50) && (speedR < lastSpeedR + 50 && speedR > lastSpeedR - 50) && timeout < TIMEOUT)
-    {
+  // ####### SET OUTPUTS #######
+  if ((speedL < lastSpeedL + 50 && speedL > lastSpeedL - 50) && (speedR < lastSpeedR + 50 && speedR > lastSpeedR - 50) && timeout < TIMEOUT)
+  {
 #ifdef INVERT_R_DIRECTION
-      pwmr = speedR;
+    pwmr = speedR;
 #else
-      pwmr = -speedR;
+    pwmr = -speedR;
 #endif
 #ifdef INVERT_L_DIRECTION
-      pwml = -speedL;
+    pwml = -speedL;
 #else
-      pwml = speedL;
+    pwml = speedL;
 #endif
-    }
+  }
 
-    lastSpeedL = speedL;
-    lastSpeedR = speedR;
+  lastSpeedL = speedL;
+  lastSpeedR = speedR;
 
-    //if (inactivity_timeout_counter % 25 == 0)
-    if (iLog * DELAY_IN_MAIN_LOOP > 200) // log every 200 ms
-    {
-      iLog = 0;
-      // ####### CALC BOARD TEMPERATURE #######
-      board_temp_adc_filtered = board_temp_adc_filtered * 0.99 + (float)adc_buffer.temp * 0.01;
-      board_temp_deg_c = ((float)TEMP_CAL_HIGH_DEG_C - (float)TEMP_CAL_LOW_DEG_C) / ((float)TEMP_CAL_HIGH_ADC - (float)TEMP_CAL_LOW_ADC) * (board_temp_adc_filtered - (float)TEMP_CAL_LOW_ADC) + (float)TEMP_CAL_LOW_DEG_C;
+  iLog++;
+  //if (inactivity_timeout_counter % 25 == 0)
+  if (iLog * DELAY_IN_MAIN_LOOP > 200) // log every 200 ms
+  {
+    iLog = 0;
+    // ####### CALC BOARD TEMPERATURE #######
+    board_temp_adc_filtered = board_temp_adc_filtered * 0.99 + (float)adc_buffer.temp * 0.01;
+    board_temp_deg_c = ((float)TEMP_CAL_HIGH_DEG_C - (float)TEMP_CAL_LOW_DEG_C) / ((float)TEMP_CAL_HIGH_ADC - (float)TEMP_CAL_LOW_ADC) * (board_temp_adc_filtered - (float)TEMP_CAL_LOW_ADC) + (float)TEMP_CAL_LOW_DEG_C;
 
+    properties.speedLeft = (float)HallData[0].HallSpeed_mm_per_s * 0.0036f;
+    properties.speedRight = (float)HallData[1].HallSpeed_mm_per_s * 0.0036f;
+    properties.hallSkippedLeft = HallData[0].HallSkipped;
+    properties.hallSkippedRight = HallData[1].HallSkipped;
+    properties.temperature = board_temp_deg_c;
+    properties.voltage = batteryVoltage;
+    properties.currentLeft = currentL;
+    properties.currentRight = currentR;
 //ROBO begin
 #if defined DEBUG_SERIAL_FEEDBACK && (defined DEBUG_SERIAL_USART2 || defined DEBUG_SERIAL_USART3)
 
-      if (UART_DMA_CHANNEL->CNDTR == 0)
-      {
-        oFeedback.iSpeedL = (int)(float)HallData[0].HallSpeed_mm_per_s * 0.36f;
-        oFeedback.iSpeedR = (int)(float)HallData[1].HallSpeed_mm_per_s * 0.36f;
-        oFeedback.iHallSkippedL = HallData[0].HallSkipped;
-        oFeedback.iHallSkippedR = HallData[1].HallSkipped;
-        oFeedback.iTemp = (int)board_temp_deg_c;
-        oFeedback.iVolt = (int)(batteryVoltage * 100.0f);
-        oFeedback.iAmpL = (int)(currentL * 100.0f);
-        oFeedback.iAmpR = (int)(currentR * 100.0f);
-        oFeedback.crc = 0;
-        crc32((const void *)&oFeedback, sizeof(oFeedback) - 4, &oFeedback.crc);
+    if (UART_DMA_CHANNEL->CNDTR == 0)
+    {
+      oFeedback.iSpeedL = (int)(float)HallData[0].HallSpeed_mm_per_s * 0.36f;
+      oFeedback.iSpeedR = (int)(float)HallData[1].HallSpeed_mm_per_s * 0.36f;
+      oFeedback.iHallSkippedL = HallData[0].HallSkipped;
+      oFeedback.iHallSkippedR = HallData[1].HallSkipped;
+      oFeedback.iTemp = (int)board_temp_deg_c;
+      oFeedback.iVolt = (int)(batteryVoltage * 100.0f);
+      oFeedback.iAmpL = (int)(currentL * 100.0f);
+      oFeedback.iAmpR = (int)(currentR * 100.0f);
+      oFeedback.crc = 0;
+      crc32((const void *)&oFeedback, sizeof(oFeedback) - 4, &oFeedback.crc);
 
-        /*			oFeedback.iSpeedL	= 1;
+      /*			oFeedback.iSpeedL	= 1;
 			oFeedback.iSpeedR	= 2;
 			oFeedback.iHallSkippedL	= 3;
 			oFeedback.iHallSkippedR	= 4;
@@ -599,31 +615,31 @@ void controlLoop()
 			crc32((const void *)&oFeedback, sizeof(oFeedback)-4, &oFeedback.crc);
 */
 
-        UART_DMA_CHANNEL->CCR &= ~DMA_CCR_EN;
-        UART_DMA_CHANNEL->CNDTR = sizeof(oFeedback);
-        UART_DMA_CHANNEL->CMAR = (uint32_t)&oFeedback;
-        UART_DMA_CHANNEL->CCR |= DMA_CCR_EN;
-      }
+      UART_DMA_CHANNEL->CCR &= ~DMA_CCR_EN;
+      UART_DMA_CHANNEL->CNDTR = sizeof(oFeedback);
+      UART_DMA_CHANNEL->CMAR = (uint32_t)&oFeedback;
+      UART_DMA_CHANNEL->CCR |= DMA_CCR_EN;
+    }
 #else
-      //ROBO end
+    //ROBO end
 
 // ####### DEBUG SERIAL OUT #######
 #ifdef CONTROL_ADC
-      setScopeChannel(0, (int)adc_buffer.l_tx2);          // 1: ADC1
-      setScopeChannel(1, (int)adc_buffer.l_rx2);          // 2: ADC2
+    setScopeChannel(0, (int)adc_buffer.l_tx2);          // 1: ADC1
+    setScopeChannel(1, (int)adc_buffer.l_rx2);          // 2: ADC2
 #endif
-      setScopeChannel(2, (int)speedR);                    // 3: output speed: 0-1000
-      setScopeChannel(3, (int)speedL);                    // 4: output speed: 0-1000
-      setScopeChannel(4, (int)adc_buffer.batt1);          // 5: for battery voltage calibration
-      setScopeChannel(5, (int)(batteryVoltage * 100.0f)); // 6: for verifying battery voltage calibration
-      setScopeChannel(6, (int)board_temp_adc_filtered);   // 7: for board temperature calibration
-      setScopeChannel(7, (int)board_temp_deg_c);          // 8: for verifying board temperature calibration
-      consoleScope();
+    setScopeChannel(2, (int)speedR);                    // 3: output speed: 0-1000
+    setScopeChannel(3, (int)speedL);                    // 4: output speed: 0-1000
+    setScopeChannel(4, (int)adc_buffer.batt1);          // 5: for battery voltage calibration
+    setScopeChannel(5, (int)(batteryVoltage * 100.0f)); // 6: for verifying battery voltage calibration
+    setScopeChannel(6, (int)board_temp_adc_filtered);   // 7: for board temperature calibration
+    setScopeChannel(7, (int)board_temp_deg_c);          // 8: for verifying board temperature calibration
+    consoleScope();
 #endif //ROBO
-    }
+  }
 
-    // ####### POWEROFF BY POWER-BUTTON #######
- /*   if (HAL_GPIO_ReadPin(BUTTON_PORT, BUTTON_PIN) && weakr == 0 && weakl == 0)
+  // ####### POWEROFF BY POWER-BUTTON #######
+  /*   if (HAL_GPIO_ReadPin(BUTTON_PORT, BUTTON_PIN) && weakr == 0 && weakl == 0)
     {
       enable = 0;
       int i = 0;
@@ -637,120 +653,120 @@ void controlLoop()
       poweroff();
     }*/
 
-    // ####### BEEP AND EMERGENCY POWEROFF #######
-    if (TEMP_POWEROFF_ENABLE && board_temp_deg_c >= TEMP_POWEROFF && ABS(speed) < 20)
-    { // poweroff before mainboard burns
-      poweroff();
-    }
-    else if (batteryVoltage < ((float)BAT_LOW_DEAD * (float)BAT_NUMBER_OF_CELLS) && ABS(speed) < 20)
-    { // poweroff low bat 3
-      poweroff();
-    }
-    else if (TEMP_WARNING_ENABLE && board_temp_deg_c >= TEMP_WARNING)
-    { // beep if mainboard gets hot
-      buzzerFreq = 4;
-      buzzerPattern = 1;
-    }
-    else if (batteryVoltage < ((float)BAT_LOW_LVL1 * (float)BAT_NUMBER_OF_CELLS) && batteryVoltage > ((float)BAT_LOW_LVL2 * (float)BAT_NUMBER_OF_CELLS) && BAT_LOW_LVL1_ENABLE)
-    { // low bat 1: slow beep
-      buzzerFreq = 5;
-      buzzerPattern = 42;
-    }
-    else if (batteryVoltage < ((float)BAT_LOW_LVL2 * (float)BAT_NUMBER_OF_CELLS) && batteryVoltage > ((float)BAT_LOW_DEAD * (float)BAT_NUMBER_OF_CELLS) && BAT_LOW_LVL2_ENABLE)
-    { // low bat 2: fast beep
-      buzzerFreq = 5;
-      buzzerPattern = 6;
-    }
-    else if (BEEPS_BACKWARD && speed < -50)
-    { // backward beep
-      buzzerFreq = 5;
-      buzzerPattern = 1;
-    }
-    else
-    { // do not beep
-      if (buzzerLen > 0)
-      {
-        buzzerLen--;
-      }
-      else
-      {
-        buzzerFreq = 0;
-        buzzerPattern = 0;
-      }
-    }
-
-    // ####### INACTIVITY TIMEOUT #######
-    if (ABS(speedL) > 50 || ABS(speedR) > 50)
+  // ####### BEEP AND EMERGENCY POWEROFF #######
+  if (TEMP_POWEROFF_ENABLE && board_temp_deg_c >= TEMP_POWEROFF && ABS(speed) < 20)
+  { // poweroff before mainboard burns
+    poweroff();
+  }
+  else if (batteryVoltage < ((float)BAT_LOW_DEAD * (float)BAT_NUMBER_OF_CELLS) && ABS(speed) < 20)
+  { // poweroff low bat 3
+    poweroff();
+  }
+  else if (TEMP_WARNING_ENABLE && board_temp_deg_c >= TEMP_WARNING)
+  { // beep if mainboard gets hot
+    buzzerFreq = 4;
+    buzzerPattern = 1;
+  }
+  else if (batteryVoltage < ((float)BAT_LOW_LVL1 * (float)BAT_NUMBER_OF_CELLS) && batteryVoltage > ((float)BAT_LOW_LVL2 * (float)BAT_NUMBER_OF_CELLS) && BAT_LOW_LVL1_ENABLE)
+  { // low bat 1: slow beep
+    buzzerFreq = 5;
+    buzzerPattern = 42;
+  }
+  else if (batteryVoltage < ((float)BAT_LOW_LVL2 * (float)BAT_NUMBER_OF_CELLS) && batteryVoltage > ((float)BAT_LOW_DEAD * (float)BAT_NUMBER_OF_CELLS) && BAT_LOW_LVL2_ENABLE)
+  { // low bat 2: fast beep
+    buzzerFreq = 5;
+    buzzerPattern = 6;
+  }
+  else if (BEEPS_BACKWARD && speed < -50)
+  { // backward beep
+    buzzerFreq = 5;
+    buzzerPattern = 1;
+  }
+  else
+  { // do not beep
+    if (buzzerLen > 0)
     {
-      inactivity_timeout_counter = 0;
+      buzzerLen--;
     }
     else
     {
-      inactivity_timeout_counter++;
+      buzzerFreq = 0;
+      buzzerPattern = 0;
+    }
+  }
+
+  // ####### INACTIVITY TIMEOUT #######
+  if (ABS(speedL) > 50 || ABS(speedR) > 50)
+  {
+    inactivity_timeout_counter = 0;
+  }
+  else
+  {
+    inactivity_timeout_counter++;
+  }
+
+  // inactivity 10s warning; 1s bleeping
+  if ((inactivity_timeout_counter > (INACTIVITY_TIMEOUT * 50 * 1000) / (DELAY_IN_MAIN_LOOP + 1)) &&
+      (buzzerFreq == 0))
+  {
+    buzzerFreq = 3;
+    buzzerPattern = 1;
+    buzzerLen = 1000;
+  }
+
+  // inactivity 5s warning; 1s bleeping
+  if ((inactivity_timeout_counter > (INACTIVITY_TIMEOUT * 55 * 1000) / (DELAY_IN_MAIN_LOOP + 1)) &&
+      (buzzerFreq == 0))
+  {
+    buzzerFreq = 2;
+    buzzerPattern = 1;
+    buzzerLen = 1000;
+  }
+
+  // power off after ~60s of inactivity
+  if (inactivity_timeout_counter > (INACTIVITY_TIMEOUT * 60 * 1000) / (DELAY_IN_MAIN_LOOP + 1))
+  { // rest of main loop needs maybe 1ms
+    inactivity_timeout_counter = 0;
+    poweroff();
+  }
+
+  if (powerofftimer > 0)
+  {
+    powerofftimer--;
+
+    // spit a msg every 2 seconds
+    if (!(powerofftimer % (2000 / DELAY_IN_MAIN_LOOP)))
+    {
+      char tmp[30];
+      sprintf(tmp, "power off in %ds\r\n", (powerofftimer * DELAY_IN_MAIN_LOOP) / 1000);
+      consoleLog(tmp);
     }
 
-    // inactivity 10s warning; 1s bleeping
-    if ((inactivity_timeout_counter > (INACTIVITY_TIMEOUT * 50 * 1000) / (DELAY_IN_MAIN_LOOP + 1)) &&
-        (buzzerFreq == 0))
+    if (powerofftimer <= 10000 / DELAY_IN_MAIN_LOOP)
     {
       buzzerFreq = 3;
       buzzerPattern = 1;
       buzzerLen = 1000;
     }
 
-    // inactivity 5s warning; 1s bleeping
-    if ((inactivity_timeout_counter > (INACTIVITY_TIMEOUT * 55 * 1000) / (DELAY_IN_MAIN_LOOP + 1)) &&
-        (buzzerFreq == 0))
+    if (powerofftimer <= 5000 / DELAY_IN_MAIN_LOOP)
     {
       buzzerFreq = 2;
       buzzerPattern = 1;
       buzzerLen = 1000;
     }
 
-    // power off after ~60s of inactivity
-    if (inactivity_timeout_counter > (INACTIVITY_TIMEOUT * 60 * 1000) / (DELAY_IN_MAIN_LOOP + 1))
-    { // rest of main loop needs maybe 1ms
-      inactivity_timeout_counter = 0;
+    if (powerofftimer <= 0)
+    {
+      powerofftimer = 0;
       poweroff();
     }
-
-    if (powerofftimer > 0)
-    {
-      powerofftimer--;
-
-      // spit a msg every 2 seconds
-      if (!(powerofftimer % (2000 / DELAY_IN_MAIN_LOOP)))
-      {
-        char tmp[30];
-        sprintf(tmp, "power off in %ds\r\n", (powerofftimer * DELAY_IN_MAIN_LOOP) / 1000);
-        consoleLog(tmp);
-      }
-
-      if (powerofftimer <= 10000 / DELAY_IN_MAIN_LOOP)
-      {
-        buzzerFreq = 3;
-        buzzerPattern = 1;
-        buzzerLen = 1000;
-      }
-
-      if (powerofftimer <= 5000 / DELAY_IN_MAIN_LOOP)
-      {
-        buzzerFreq = 2;
-        buzzerPattern = 1;
-        buzzerLen = 1000;
-      }
-
-      if (powerofftimer <= 0)
-      {
-        powerofftimer = 0;
-        poweroff();
-      }
-    }
+  }
 
 #ifdef SOFTWATCHDOG_TIMEOUT
-    __HAL_TIM_SET_COUNTER(&htim3, 0); // Kick the Watchdog
+  __HAL_TIM_SET_COUNTER(&htim3, 0); // Kick the Watchdog
 #endif
-  }
+}
 
 /** System Clock Configuration
 */

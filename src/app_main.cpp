@@ -4,6 +4,7 @@
 #include <CborWriter.h>
 #include <Spine.h>
 #include <Uart.h>
+#include <properties.h>
 
 Thread *spineThread;
 Spine *spine;
@@ -17,10 +18,7 @@ Uart *uart2;
 extern UART_HandleTypeDef huart2;
 Sink<int> *reportSpeed;
 
-extern int cmd2;
-extern int cmd1;
-extern int speed;
-extern int steer;
+extern "C" Properties properties;
 
 uint32_t counter = 0;
 
@@ -50,37 +48,68 @@ extern "C" void app_main_init()
     spine->subscriber<int32_t>("motor/speed") >>
         [&](const int32_t &w)
     {
-        cmd2 = w;
+        properties.speedTarget = w;
         INFO("speed %d", w);
     };
     spine->subscriber<int32_t>("motor/steer") >>
         [&](const int32_t &w)
     {
-        cmd1 = w;
+        properties.steerTarget = w;
         INFO("steer %d", w);
     };
     *reportTimer >> [&](const TimerMsg &)
     {
-        switch (counter++ % 4)
+        counter++;
+        switch (counter % 10)
         {
         case 0:
         {
-            spine->publish<int>("src/hover/motor/speedTarget", cmd2);
+            spine->publish<uint32_t>("src/hover/motor/speedTarget", properties.speedTarget);
             break;
         }
         case 1:
         {
-            spine->publish<int>("src/hover/motor/speedValue", speed);
+            spine->publish<uint32_t>("src/hover/motor/steerTarget", properties.steerTarget);
             break;
         }
         case 2:
         {
-            spine->publish<int>("src/hover/motor/steerTarget", cmd1);
+            spine->publish<float>("src/hover/motor/speedLeft", properties.speedLeft);
             break;
         }
         case 3:
         {
-            spine->publish<int>("src/hover/motor/steerValue", steer);
+            spine->publish<float>("src/hover/motor/speedRight", properties.speedRight);
+            break;
+        }
+        case 4:
+        {
+            spine->publish<uint32_t>("src/hover/motor/hallSkippedLeft", properties.hallSkippedLeft);
+            break;
+        }
+        case 5:
+        {
+            spine->publish<uint32_t>("src/hover/motor/hallSkippedRight", properties.hallSkippedRight);
+            break;
+        }
+        case 6:
+        {
+            spine->publish<float>("src/hover/motor/voltage", properties.voltage);
+            break;
+        }
+        case 7:
+        {
+            spine->publish<float>("src/hover/motor/temperature", properties.temperature);
+            break;
+        }
+        case 8:
+        {
+            spine->publish<float>("src/hover/motor/currentLeft", properties.currentLeft);
+            break;
+        }
+        case 9:
+        {
+            spine->publish<float>("src/hover/motor/currentRight", properties.currentRight);
             break;
         }
         }

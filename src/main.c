@@ -762,10 +762,19 @@ void controlLoop()
       poweroff();
     }
   }
+  //  softWatchdogReset();
+}
 
+void softWatchdogReset()
+{
 #ifdef SOFTWATCHDOG_TIMEOUT
   __HAL_TIM_SET_COUNTER(&htim3, 0); // Kick the Watchdog
 #endif
+}
+
+void inactivityReset()
+{
+  inactivity_timeout_counter = 0;
 }
 
 /** System Clock Configuration

@@ -10,9 +10,13 @@ Thread *spineThread;
 Spine *spine;
 extern "C" void controlLoop();
 extern "C" void controlInit();
+extern "C" void softWatchdogReset();
+extern "C" void inactivityReset();
+
 Thread *controlThread;
 TimerSource *controlTimer;
 TimerSource *reportTimer;
+TimerSource *watchdogTimer;
 
 Uart *uart2;
 extern UART_HandleTypeDef huart2;
@@ -41,8 +45,15 @@ extern "C" void app_main_init()
     controlThread = new Thread("controlThread");
     controlTimer = new TimerSource(*controlThread, 5, true, "controlTimer");
     reportTimer = new TimerSource(*controlThread, 100, true, "controlTimer");
+    watchdogTimer = new TimerSource(*controlThread, 3000, true, "wathdogTimer");
     *controlTimer >> [](const TimerMsg &)
     { controlLoop(); };
+    // stop drive when offline
+    *watchdogTimer >> [](const TimerMsg &)
+    {
+        properties.speedTarget = 0;
+        properties.steerTarget = 0;
+    };
     controlInit();
     spine->init();
     spine->subscriber<int32_t>("motor/speed") >>
@@ -56,6 +67,13 @@ extern "C" void app_main_init()
     {
         properties.steerTarget = w;
         INFO("steer %d", w);
+    };
+    // stop drive when offline
+    spine->subscriber<bool>("motor/watchdogReset") >>
+        [&](const int32_t &w)
+    {
+        watchdogTimer->reset();
+        inactivityReset();
     };
     *reportTimer >> [&](const TimerMsg &)
     {

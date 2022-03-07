@@ -1,3 +1,7 @@
+
+https://github.com/RoboDurden/hoverboard-firmware-hack
+
+
 # better UART communication (bi-directional) with km/h speed control and max-recuperation
 
 Only use this fork when you want to control 

@@ -1,0 +1,24 @@
+{
+    "name": "Drivers",
+    "version": "0.0.1",
+    "keywords": "stream",
+    "description": "Drivers HAL STM32 ",
+    "platforms": "ststm32",
+    "dependencies":{
+        "printf":"*"
+    },
+    "build": {
+        "libArchive": false,
+        "srcDir":"/home/lieven/workspace/hoverboard/Drivers/",
+        "srcFilter":["+<STM32F1xx_HAL_Driver/Src/>","+<CMSIS/Device/ST/STM32F1xx/Source/gcc/>"],
+        "flags": [
+            "-mcpu=cortex-m3",
+            "-mthumb",
+            "-fdata-sections",
+            "-ffunction-sections",
+            "-DSTM32F103xE",
+            "-D__STM32__",
+            "-Wall"
+        ]
+    }
+}

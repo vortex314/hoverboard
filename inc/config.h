@@ -39,7 +39,7 @@
 #define TEMP_POWEROFF_ENABLE 0   // to poweroff or not to poweroff, 1 or 0, DO NOT ACTIVITE WITHOUT CALIBRATION!
 #define TEMP_POWEROFF 65         // overheat poweroff. (while not driving) [°C]
 
-#define INACTIVITY_TIMEOUT 8 // minutes of not driving until poweroff. it is not very precise.
+#define INACTIVITY_TIMEOUT 800 // was 8 minutes of not driving until poweroff. it is not very precise.
 
 //#define WHEEL_SIZE_INCHES 8.5                      // - set to your wheelsize to override the default 6.5
 

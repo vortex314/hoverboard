@@ -32,6 +32,7 @@ void USART2_IT_init();
 void USART3_IT_init();
 void UART2_Init();
 void UART3_Init();
+  void I2C_Init();          // defined in setup.c
 
 #if defined(CONTROL_NUNCHUCK)
   void Nunchuck_Read();     // defined in control.c

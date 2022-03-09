@@ -4,6 +4,8 @@
 #include <CborWriter.h>
 #include <Spine.h>
 #include <Uart.h>
+#include <As5600.h>
+#include <I2C.h>
 #include <properties.h>
 
 Thread *spineThread;
@@ -19,6 +21,7 @@ TimerSource *reportTimer;
 TimerSource *watchdogTimer;
 
 Uart *uart2;
+As5600* as5600;
 extern UART_HandleTypeDef huart2;
 Sink<int> *reportSpeed;
 
@@ -32,8 +35,10 @@ extern "C" void app_main_init()
 {
     spineThread = new Thread("spineThread");
     uart2 = new Uart(*spineThread, &huart2);
+    as5600 = new As5600(I2C::create(0,0));
 
     uart2->init();
+    as5600->init();
     INFO("app_main() entry");
     Sys::hostname("hover");
     spine = new Spine(*spineThread);

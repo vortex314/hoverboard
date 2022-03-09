@@ -4,14 +4,11 @@
     "keywords": "stream",
     "description": "Real Time Operating System",
     "platforms": "ststm32",
-    "dependencies":{
-        "printf":"*"
-    },
     "build": {
         "libArchive": false,
-        "srcDir":"/home/lieven/workspace/components",
-        "srcFilter":["+<src/>","+<micro/>"],
-        "includeDir":"/home/lieven/workspace/components/inc",
+        "srcDir":"/home/lieven/workspace/limero",
+        "srcFilter":["+<src/>","+<nortos/>"],
+        "includeDir":"/home/lieven/workspace/limero/inc",
         "flags": [
             "-I /home/lieven/workspace/components/inc",
             "-I /home/lieven/workspace/tinycbor/src",

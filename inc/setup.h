@@ -19,6 +19,10 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#ifdef __cplusplus
+extern "C" {
+#endif  
+
 #pragma once
 
 #include "config.h"
@@ -32,7 +36,7 @@ void USART2_IT_init();
 void USART3_IT_init();
 void UART2_Init();
 void UART3_Init();
-  void I2C_Init();          // defined in setup.c
+void I2C_Init();          // defined in setup.c
 
 #if defined(CONTROL_NUNCHUCK)
   void Nunchuck_Read();     // defined in control.c
@@ -43,4 +47,8 @@ void UART3_Init();
 #ifdef SOFTWATCHDOG_TIMEOUT
   void MX_TIM3_Softwatchdog_Init(void);
   extern TIM_HandleTypeDef htim3;
+#endif
+
+#ifdef __cplusplus
+}
 #endif

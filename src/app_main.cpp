@@ -2,14 +2,15 @@
 #include <cbor.h>
 #include <CborReader.h>
 #include <CborWriter.h>
-#include <Spine.h>
+#include <RedisSpine.h>
+#include <PPP.h>
 #include <Uart.h>
 #include <As5600.h>
 #include <I2C.h>
 #include <properties.h>
 
 Thread *spineThread;
-Spine *spine;
+RedisSpine *spine;
 extern "C" void controlLoop();
 extern "C" void controlInit();
 extern "C" void softWatchdogReset();
@@ -21,7 +22,8 @@ TimerSource *reportTimer;
 TimerSource *watchdogTimer;
 
 Uart *uart2;
-As5600* as5600;
+As5600 *as5600;
+PPP *ppp;
 extern UART_HandleTypeDef huart2;
 Sink<int> *reportSpeed;
 
@@ -35,24 +37,27 @@ extern "C" void app_main_init()
 {
     spineThread = new Thread("spineThread");
     uart2 = new Uart(*spineThread, &huart2);
-    as5600 = new As5600(I2C::create(0,0));
+    as5600 = new As5600(I2C::create(0, 0));
 
     uart2->init();
     as5600->init();
+    as5600->onFailure(NULL, [](void *pv, const char *s)
+                      { WARN(" StepperServo AS5600 : %s ", s); });
     INFO("app_main() entry");
     Sys::hostname("hover");
-    spine = new Spine(*spineThread);
+    spine = new RedisSpine(*spineThread);
+    ppp = new PPP(FRAME_MAX_SIZE);
 
-    uart2->rxdFrame >> spine->rxdFrame;
-    spine->txdFrame >> uart2->txdFrame;
-    INFO("");
+    uart2->rxdFrame >> ppp->deframe() >> spine->rxdFrame;
+    spine->txdFrame >> ppp->frame() >> uart2->txdFrame;
 
     controlThread = new Thread("controlThread");
     controlTimer = new TimerSource(*controlThread, 5, true, "controlTimer");
-    reportTimer = new TimerSource(*controlThread, 100, true, "controlTimer");
+    reportTimer = new TimerSource(*controlThread, 100, true, "reportTimer");
     watchdogTimer = new TimerSource(*controlThread, 3000, true, "wathdogTimer");
     *controlTimer >> [](const TimerMsg &)
     { controlLoop(); };
+
     // stop drive when offline
     *watchdogTimer >> [](const TimerMsg &)
     {
@@ -83,7 +88,7 @@ extern "C" void app_main_init()
     *reportTimer >> [&](const TimerMsg &)
     {
         counter++;
-        switch (counter % 10)
+        switch (counter % 11)
         {
         case 0:
         {
@@ -133,6 +138,11 @@ extern "C" void app_main_init()
         case 9:
         {
             spine->publish<float>("src/hover/motor/currentRight", properties.currentRight);
+            break;
+        }
+        case 10:
+        {
+            spine->publish<int>("src/hover/motor/angle", as5600->degrees());
             break;
         }
         }

@@ -10,11 +10,11 @@ Uart &fromHandle(UART_HandleTypeDef *huart)
 
 Uart::Uart(Thread &thread, UART_HandleTypeDef *huart)
 	: Actor(thread), _huart(huart),
-	  rxdFrame(5),
-	  txdFrame([&](const Bytes &bs)
-			   { sendBytes(bs.data(), bs.size()); })
+	  _rxd(5),
+	  _txd([&](const Bytes &bs)
+		   { sendBytes(bs); })
 {
-	rxdFrame.async(thread);
+	_rxd.async(thread);
 	_rdPtr = 0;
 	_wrPtr = 0;
 	crcDMAdone = true;
@@ -30,41 +30,40 @@ bool Uart::init()
 
 	__HAL_UART_ENABLE_IT(_huart, UART_IT_IDLE);
 	__DMA1_CLK_ENABLE();
-	HAL_UART_Receive_DMA(_huart, rxBuffer, sizeof(rxBuffer));
+	HAL_UART_Receive_DMA(_huart, _rxdBuffer, sizeof(_rxdBuffer));
 	return true;
 }
 
-void Uart::sendBytes(const uint8_t *data, size_t length)
+void Uart::sendBytes(Bytes data)
 {
 	if (!crcDMAdone)
 	{
 		_txdOverflow++;
 		return;
 	}
-	static uint8_t txBuffer[FRAME_MAX];
-	for (size_t i = 0; i < length; i++)
-		txBuffer[i] = data[i];
+	size_t size = data.size() < FRAME_MAX ? data.size() : FRAME_MAX;
+	memcpy(_txdBuffer, data.data(), size);
 	crcDMAdone = false;
-	if (HAL_UART_Transmit_DMA(&huart2, txBuffer, length) != HAL_OK)
+	if (HAL_UART_Transmit_DMA(&huart2, _txdBuffer, size) != HAL_OK)
 		_txdOverflow++;
 }
 // empty DMA buffer
 void Uart::rxdIrq(UART_HandleTypeDef *huart)
 {
-	_wrPtr = sizeof(rxBuffer) - huart->hdmarx->Instance->CNDTR;
+	_wrPtr = sizeof(_rxdBuffer) - huart->hdmarx->Instance->CNDTR;
 	if (_wrPtr != _rdPtr)
 	{
 		if (_wrPtr > _rdPtr)
 		{
 			for (size_t i = _rdPtr; i < _wrPtr; i++)
-				rxdBytes(rxBuffer + _rdPtr, _wrPtr - _rdPtr);
+				rxdBytes(_rxdBuffer + _rdPtr, _wrPtr - _rdPtr);
 		}
 		else
 		{
-			for (size_t i = _rdPtr; i < sizeof(rxBuffer); i++)
-				rxdBytes(rxBuffer + _rdPtr, sizeof(rxBuffer) - _rdPtr);
+			for (size_t i = _rdPtr; i < sizeof(_rxdBuffer); i++)
+				rxdBytes(_rxdBuffer + _rdPtr, sizeof(_rxdBuffer) - _rdPtr);
 			for (size_t i = 0; i < _wrPtr; i++)
-				rxdBytes(rxBuffer, _wrPtr);
+				rxdBytes(_rxdBuffer, _wrPtr);
 		}
 		_rdPtr = _wrPtr;
 	}
@@ -72,17 +71,12 @@ void Uart::rxdIrq(UART_HandleTypeDef *huart)
 // split into PPP frames
 void Uart::rxdBytes(uint8_t *data, size_t length)
 {
-	_frameRxd.clear();
-	for (size_t idx = 0; idx < length && idx < FRAME_MAX; idx++)
-	{
-		_frameRxd.push_back(data[idx]);
-	};
-	rxdFrame.onIsr(_frameRxd);
+	_rxd.onIsr(Bytes(data, data + length));
 }
 
 extern "C" void uartSendBytes(uint8_t *data, size_t size, uint32_t retries)
 {
-	uart2->sendBytes(data, size);
+	uart2->sendBytes(Bytes(data, data + size));
 }
 
 extern "C" void DMA1_Channel6_IRQHandler(void)
@@ -118,7 +112,7 @@ extern "C" void UART_IDLECallback(UART_HandleTypeDef *huart)
 // restart DMA as first before getting data when buffer overflows.
 extern "C" void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-	HAL_UART_Receive_DMA(huart, fromHandle(huart).rxBuffer, sizeof(Uart::rxBuffer));
+	HAL_UART_Receive_DMA(huart, fromHandle(huart)._rxdBuffer, sizeof(Uart::_rxdBuffer));
 	fromHandle(huart).rxdIrq(huart);
 }
 // get first half of buffer, to be ready before buffer full

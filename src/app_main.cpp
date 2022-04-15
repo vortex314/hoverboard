@@ -48,8 +48,8 @@ extern "C" void app_main_init()
     spine = new RedisSpine(*spineThread);
     ppp = new PPP(FRAME_MAX_SIZE);
 
-    uart2->rxdFrame >> ppp->deframe() >> spine->rxdFrame;
-    spine->txdFrame >> ppp->frame() >> uart2->txdFrame;
+    uart2->rxd() >> ppp->deframe() >> spine->rxdFrame;
+    spine->txdFrame >> ppp->frame() >> uart2->txd();
 
     controlThread = new Thread("controlThread");
     controlTimer = new TimerSource(*controlThread, 5, true, "controlTimer");

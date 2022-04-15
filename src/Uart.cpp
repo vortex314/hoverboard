@@ -1,6 +1,6 @@
 #include "Uart.h"
 
-extern Uart* uart2;
+extern Uart *uart2;
 void HAL_UART_MspInit(UART_HandleTypeDef *huart);
 
 Uart &fromHandle(UART_HandleTypeDef *huart)
@@ -9,9 +9,10 @@ Uart &fromHandle(UART_HandleTypeDef *huart)
 }
 
 Uart::Uart(Thread &thread, UART_HandleTypeDef *huart)
-	: Actor(thread), _huart(huart), rxdFrame(5), txdFrame([&](
-															  const Bytes &bs)
-														  { sendFrame(bs, 5); })
+	: Actor(thread), _huart(huart),
+	  rxdFrame(5),
+	  txdFrame([&](const Bytes &bs)
+			   { sendBytes(bs.data(), bs.size()); })
 {
 	rxdFrame.async(thread);
 	_rdPtr = 0;
@@ -32,12 +33,8 @@ bool Uart::init()
 	HAL_UART_Receive_DMA(_huart, rxBuffer, sizeof(rxBuffer));
 	return true;
 }
-void Uart::sendFrame(const Bytes &bs, int retries)
-{
-	Bytes txBuffer = frame(bs);
-	sendBytes(txBuffer.data(), txBuffer.size(), retries);
-}
-void Uart::sendBytes(uint8_t *data, size_t length, int retries)
+
+void Uart::sendBytes(const uint8_t *data, size_t length)
 {
 	if (!crcDMAdone)
 	{
@@ -60,53 +57,32 @@ void Uart::rxdIrq(UART_HandleTypeDef *huart)
 		if (_wrPtr > _rdPtr)
 		{
 			for (size_t i = _rdPtr; i < _wrPtr; i++)
-				rxdByte(rxBuffer[i]);
+				rxdBytes(rxBuffer + _rdPtr, _wrPtr - _rdPtr);
 		}
 		else
 		{
 			for (size_t i = _rdPtr; i < sizeof(rxBuffer); i++)
-				rxdByte(rxBuffer[i]);
+				rxdBytes(rxBuffer + _rdPtr, sizeof(rxBuffer) - _rdPtr);
 			for (size_t i = 0; i < _wrPtr; i++)
-				rxdByte(rxBuffer[i]);
+				rxdBytes(rxBuffer, _wrPtr);
 		}
 		_rdPtr = _wrPtr;
 	}
 }
 // split into PPP frames
-void Uart::rxdByte(uint8_t c)
+void Uart::rxdBytes(uint8_t *data, size_t length)
 {
-	if (c == PPP_ESC_CHAR)
+	_frameRxd.clear();
+	for (size_t idx = 0; idx < length && idx < FRAME_MAX; idx++)
 	{
-		escFlag = true;
-	}
-	else if (c == PPP_FLAG_CHAR)
-	{
-		if (_frameRxd.size())
-			rxdFrame.onIsr(_frameRxd);
-		_frameRxd.clear();
-	}
-	else if (escFlag)
-	{
-		_frameRxd.push_back(c ^ PPP_MASK_CHAR);
-		escFlag = false;
-	}
-	else
-	{
-		if (_frameRxd.size() < FRAME_MAX)
-		{
-			_frameRxd.push_back(c);
-		}
-		else
-		{
-			_rxdOverflow++;
-			_frameRxd.clear();
-		}
-	}
+		_frameRxd.push_back(data[idx]);
+	};
+	rxdFrame.onIsr(_frameRxd);
 }
 
 extern "C" void uartSendBytes(uint8_t *data, size_t size, uint32_t retries)
 {
-	uart2->sendBytes(data, size, retries);
+	uart2->sendBytes(data, size);
 }
 
 extern "C" void DMA1_Channel6_IRQHandler(void)
@@ -115,8 +91,8 @@ extern "C" void DMA1_Channel6_IRQHandler(void)
 }
 
 /**
-  * @brief This function handles DMA1 channel7 global interrupt.
-  */
+ * @brief This function handles DMA1 channel7 global interrupt.
+ */
 extern "C" void DMA1_Channel7_IRQHandler(void)
 {
 	/* USER CODE BEGIN DMA1_Channel7_IRQn 0 */
@@ -165,18 +141,18 @@ extern "C" void DMADoneCallback(DMA_HandleTypeDef *hdma)
 
 void Error_Handler(const char *file, uint32_t line)
 {
-//	static volatile const char *s = file;
-//	static volatile uint32_t l = line;
+	//	static volatile const char *s = file;
+	//	static volatile uint32_t l = line;
 	while (1)
 		;
 }
 
 /**
-* @brief UART MSP Initialization
-* This function configures the hardware resources used in this example
-* @param huart: UART handle pointer
-* @retval None
-*/
+ * @brief UART MSP Initialization
+ * This function configures the hardware resources used in this example
+ * @param huart: UART handle pointer
+ * @retval None
+ */
 void HAL_UART2_MspInit(UART_HandleTypeDef *huart)
 {
 	GPIO_InitTypeDef GPIO_InitStruct = {0};
@@ -188,10 +164,10 @@ void HAL_UART2_MspInit(UART_HandleTypeDef *huart)
 	__HAL_RCC_USART2_CLK_ENABLE();
 
 	__HAL_RCC_GPIOA_CLK_ENABLE();
-	/* 
+	/*
 	USART2 GPIO Configuration
-    PA2     ------> USART2_TX
-    PA3     ------> USART2_RX
+	PA2     ------> USART2_TX
+	PA3     ------> USART2_RX
 */
 	GPIO_InitStruct.Pin = GPIO_PIN_2;
 	GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
@@ -262,11 +238,11 @@ void HAL_UART2_MspInit(UART_HandleTypeDef *huart)
 }
 
 /**
-* @brief UART MSP De-Initialization
-* This function freeze the hardware resources used in this example
-* @param huart: UART handle pointer
-* @retval None
-*/
+ * @brief UART MSP De-Initialization
+ * This function freeze the hardware resources used in this example
+ * @param huart: UART handle pointer
+ * @retval None
+ */
 void HAL_UART_MspDeInit(UART_HandleTypeDef *huart)
 {
 	if (huart->Instance == USART2)
@@ -278,9 +254,9 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef *huart)
 		__HAL_RCC_USART2_CLK_DISABLE();
 
 		/**USART2 GPIO Configuration
-    PA2     ------> USART2_TX
-    PA3     ------> USART2_RX
-    */
+	PA2     ------> USART2_TX
+	PA3     ------> USART2_RX
+	*/
 		HAL_GPIO_DeInit(GPIOA, GPIO_PIN_2 | GPIO_PIN_3);
 
 		/* USART2 DMA DeInit */

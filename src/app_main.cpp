@@ -1,8 +1,7 @@
 //#include <tinycbor.h>
-#include <cbor.h>
-#include <CborReader.h>
-#include <CborWriter.h>
+
 #include <RedisSpine.h>
+#include <StringUtility.h>
 #include <PPP.h>
 #include <Uart.h>
 #include <As5600.h>
@@ -16,7 +15,6 @@ extern "C" void controlInit();
 extern "C" void softWatchdogReset();
 extern "C" void inactivityReset();
 
-Thread *controlThread;
 TimerSource *controlTimer;
 TimerSource *reportTimer;
 TimerSource *watchdogTimer;
@@ -42,19 +40,20 @@ extern "C" void app_main_init()
     uart2->init();
     as5600->init();
     as5600->onFailure(NULL, [](void *pv, const char *s)
-                      { WARN(" StepperServo AS5600 : %s ", s); });
+                      { /*WARN(" StepperServo AS5600 : %s ", s);*/ });
     INFO("app_main() entry");
     Sys::hostname("hover");
     spine = new RedisSpine(*spineThread);
-    ppp = new PPP(FRAME_MAX_SIZE);
+    ppp = new PPP(*spineThread,FRAME_MAX_SIZE);
 
     uart2->rxd() >> ppp->deframe() >> spine->rxdFrame;
     spine->txdFrame >> ppp->frame() >> uart2->txd();
+ //   ppp->garbage() >> [&](const Bytes& bs){ WARN("garbage %d  %s", bs.size(),charDump(bs).c_str()); };
+ //   uart2->rxd() >> [&](const Bytes& bs){ WARN("rxd [%d]", bs.size()); };
 
-    controlThread = new Thread("controlThread");
-    controlTimer = new TimerSource(*controlThread, 5, true, "controlTimer");
-    reportTimer = new TimerSource(*controlThread, 100, true, "reportTimer");
-    watchdogTimer = new TimerSource(*controlThread, 3000, true, "wathdogTimer");
+    controlTimer = new TimerSource(*spineThread, 50, true, "controlTimer");
+    reportTimer = new TimerSource(*spineThread, 1000, true, "reportTimer");
+    watchdogTimer = new TimerSource(*spineThread, 3000, true, "watchdogTimer");
     *controlTimer >> [](const TimerMsg &)
     { controlLoop(); };
 

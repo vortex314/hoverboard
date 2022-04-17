@@ -23,12 +23,12 @@ class Uart : public Actor
 	Bytes _frameRxd;
 	size_t _wrPtr, _rdPtr;
 	QueueFlow<Bytes> _rxd;
-	SinkFunction<Bytes> _txd;
+	QueueFlow<Bytes> _txd;
 
 public:
 	uint8_t _rxdBuffer[FRAME_MAX];
 	uint8_t _txdBuffer[FRAME_MAX];
-	volatile bool crcDMAdone = true;
+	volatile bool txdDMAdone = true;
 	uint32_t _txdOverflow = 0;
 	uint32_t _rxdOverflow = 0;
 

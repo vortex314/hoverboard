@@ -10,14 +10,16 @@ Uart &fromHandle(UART_HandleTypeDef *huart)
 
 Uart::Uart(Thread &thread, UART_HandleTypeDef *huart)
 	: Actor(thread), _huart(huart),
-	  _rxd(5),
-	  _txd([&](const Bytes &bs)
-		   { sendBytes(bs); })
+	  _rxd(15, "Uart:rxd"),
+	  _txd(7, "Uart:txd")
 {
 	_rxd.async(thread);
+	_txd.async(thread);
+	_txd >> [this](const Bytes &bs)
+	{ sendBytes(bs); };
 	_rdPtr = 0;
 	_wrPtr = 0;
-	crcDMAdone = true;
+	txdDMAdone = true;
 	uart2 = this;
 }
 
@@ -36,14 +38,14 @@ bool Uart::init()
 
 void Uart::sendBytes(Bytes data)
 {
-	if (!crcDMAdone)
+	while (!txdDMAdone)
 	{
 		_txdOverflow++;
-		return;
+	//	return;
 	}
-	size_t size = data.size() < FRAME_MAX ? data.size() : FRAME_MAX;
+	size_t size = data.size() < sizeof(_txdBuffer) ? data.size() : sizeof(_txdBuffer);
 	memcpy(_txdBuffer, data.data(), size);
-	crcDMAdone = false;
+	txdDMAdone = false;
 	if (HAL_UART_Transmit_DMA(&huart2, _txdBuffer, size) != HAL_OK)
 		_txdOverflow++;
 }
@@ -55,22 +57,22 @@ void Uart::rxdIrq(UART_HandleTypeDef *huart)
 	{
 		if (_wrPtr > _rdPtr)
 		{
-			for (size_t i = _rdPtr; i < _wrPtr; i++)
-				rxdBytes(_rxdBuffer + _rdPtr, _wrPtr - _rdPtr);
+			rxdBytes(_rxdBuffer + _rdPtr, _wrPtr - _rdPtr);
 		}
 		else
 		{
-			for (size_t i = _rdPtr; i < sizeof(_rxdBuffer); i++)
-				rxdBytes(_rxdBuffer + _rdPtr, sizeof(_rxdBuffer) - _rdPtr);
-			for (size_t i = 0; i < _wrPtr; i++)
-				rxdBytes(_rxdBuffer, _wrPtr);
+			rxdBytes(_rxdBuffer + _rdPtr, sizeof(_rxdBuffer) - _rdPtr);
+			rxdBytes(_rxdBuffer, _wrPtr);
 		}
 		_rdPtr = _wrPtr;
 	}
 }
-// split into PPP frames
+
 void Uart::rxdBytes(uint8_t *data, size_t length)
 {
+	static uint64_t count = 0;
+	count = (count << 8) + length;
+//	INFO("rxdBytes %llX", count);
 	_rxd.onIsr(Bytes(data, data + length));
 }
 
@@ -124,7 +126,7 @@ extern "C" void HAL_UART_RxHalfCpltCallback(UART_HandleTypeDef *huart)
 
 extern "C" void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 {
-	fromHandle(huart).crcDMAdone = true;
+	fromHandle(huart).txdDMAdone = true;
 }
 
 extern "C" void DMADoneCallback(DMA_HandleTypeDef *hdma)

@@ -28,7 +28,6 @@ class Uart : public Actor
 public:
 	uint8_t _rxdBuffer[FRAME_MAX];
 	uint8_t _txdBuffer[FRAME_MAX];
-	volatile bool txdDMAdone = true;
 	uint32_t _txdOverflow = 0;
 	uint32_t _rxdOverflow = 0;
 

@@ -52,7 +52,7 @@ extern "C" void app_main_init()
  //   uart2->rxd() >> [&](const Bytes& bs){ WARN("rxd [%d]", bs.size()); };
 
     controlTimer = new TimerSource(*spineThread, 50, true, "controlTimer");
-    reportTimer = new TimerSource(*spineThread, 1000, true, "reportTimer");
+    reportTimer = new TimerSource(*spineThread, 100, true, "reportTimer");
     watchdogTimer = new TimerSource(*spineThread, 3000, true, "watchdogTimer");
     *controlTimer >> [](const TimerMsg &)
     { controlLoop(); };

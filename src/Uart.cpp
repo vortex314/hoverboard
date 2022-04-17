@@ -19,7 +19,6 @@ Uart::Uart(Thread &thread, UART_HandleTypeDef *huart)
 	{ sendBytes(bs); };
 	_rdPtr = 0;
 	_wrPtr = 0;
-	txdDMAdone = true;
 	uart2 = this;
 }
 
@@ -38,14 +37,13 @@ bool Uart::init()
 
 void Uart::sendBytes(Bytes data)
 {
-	while (!txdDMAdone)
+	while (  huart2.gState != HAL_UART_STATE_READY )
 	{
 		_txdOverflow++;
 	//	return;
 	}
 	size_t size = data.size() < sizeof(_txdBuffer) ? data.size() : sizeof(_txdBuffer);
 	memcpy(_txdBuffer, data.data(), size);
-	txdDMAdone = false;
 	if (HAL_UART_Transmit_DMA(&huart2, _txdBuffer, size) != HAL_OK)
 		_txdOverflow++;
 }
@@ -126,7 +124,6 @@ extern "C" void HAL_UART_RxHalfCpltCallback(UART_HandleTypeDef *huart)
 
 extern "C" void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 {
-	fromHandle(huart).txdDMAdone = true;
 }
 
 extern "C" void DMADoneCallback(DMA_HandleTypeDef *hdma)
@@ -176,7 +173,7 @@ void HAL_UART2_MspInit(UART_HandleTypeDef *huart)
 	HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
 	huart2.Instance = USART2;
-	huart2.Init.BaudRate = 115200;
+	huart2.Init.BaudRate = 921600;
 	huart2.Init.WordLength = UART_WORDLENGTH_8B;
 	huart2.Init.StopBits = UART_STOPBITS_1;
 	huart2.Init.Parity = UART_PARITY_NONE;

@@ -3,23 +3,37 @@
 extern Uart *uart2;
 void HAL_UART_MspInit(UART_HandleTypeDef *huart);
 
-Uart &fromHandle(UART_HandleTypeDef *huart)
+Uart *fromHandle(UART_HandleTypeDef *huart)
 {
-	return *uart2;
+	return uart2;
 }
 
 Uart::Uart(Thread &thread, UART_HandleTypeDef *huart)
 	: Actor(thread), _huart(huart),
-	  _rxd(15, "Uart:rxd"),
-	  _txd(7, "Uart:txd")
+	  _rxdAvailable(15, "Uart:rxd"),
+	  _txd(7, "Uart:txd"), _rxdData(FRAME_MAX * 2)
 {
-	_rxd.async(thread);
+	_rxdAvailable.async(thread);
 	_txd.async(thread);
-	_txd >> [this](const Bytes &bs)
-	{ sendBytes(bs); };
+
+	_txd >> [this](const Bytes &bs) // send data
+	{
+		sendBytes(bs);
+	};
+
+	_rxdAvailable >> [&](const bool &) // empty circular buffer
+	{
+		Bytes bs;
+		bs.reserve(128);
+		while (_rxdData.hasData() && bs.size() < 128)
+			bs.push_back(_rxdData.read());
+		_rxd.on(bs);
+	};
+
 	_rdPtr = 0;
 	_wrPtr = 0;
 	uart2 = this;
+	_dmaTxdDone = true;
 }
 
 void HAL_UART2_MspInit(UART_HandleTypeDef *huart);
@@ -35,21 +49,75 @@ bool Uart::init()
 	return true;
 }
 
+
+// empty DMA buffer
+
+
+extern "C" void uartSendBytes(uint8_t *data, size_t size, uint32_t retries)
+{
+	uart2->sendBytes(Bytes(data, data + size));
+}
+
 void Uart::sendBytes(Bytes data)
 {
-	while (  huart2.gState != HAL_UART_STATE_READY )
+	if (_dmaTxdDone == false)
 	{
 		_txdOverflow++;
-	//	return;
+		return;
 	}
+	_dmaTxdDone = false;
 	size_t size = data.size() < sizeof(_txdBuffer) ? data.size() : sizeof(_txdBuffer);
 	memcpy(_txdBuffer, data.data(), size);
 	if (HAL_UART_Transmit_DMA(&huart2, _txdBuffer, size) != HAL_OK)
 		_txdOverflow++;
 }
-// empty DMA buffer
+
+extern "C" void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
+{
+	fromHandle(huart)->_dmaTxdDone = true;
+}
+
+/* This function handles DMA1 stream6 global interrupt. */
+extern "C" void DMA1_Stream6_IRQHandler(void)
+{
+	HAL_DMA_IRQHandler(&hdma_usart2_tx);
+}
+
+extern "C" void USART2_IRQHandler(void)
+{
+	/* USER CODE BEGIN USART2_IRQn 0 */
+	extern void UART_IDLECallback(UART_HandleTypeDef * huart);
+	if (__HAL_UART_GET_FLAG(&huart2, UART_FLAG_IDLE) != RESET)
+	{
+		__HAL_UART_CLEAR_IDLEFLAG(&huart2);
+		UART_IDLECallback(&huart2);
+	}
+	HAL_UART_IRQHandler(&huart2);
+}
+
+extern "C" void UART_IDLECallback(UART_HandleTypeDef *huart)
+{
+	fromHandle(huart)->rxdIrq(huart);
+	//	HAL_UART_Receive_DMA(huart, rxBuffer, sizeof(rxBuffer));
+}
+// get first half of buffer, to be ready before buffer full
+extern "C" void HAL_UART_RxHalfCpltCallback(UART_HandleTypeDef *huart)
+{
+	fromHandle(huart)->rxdIrq(huart);
+	//	HAL_UART_Receive_DMA(huart, rxBuffer, sizeof(rxBuffer));
+}
+// restart DMA as first before getting data when buffer overflows.
+// circular mode is activated so will continue to read&write data from the beginning of the buffer
+extern "C" void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+	fromHandle(huart)->rxdIrq(huart);
+//	HAL_UART_Receive_DMA(huart, fromHandle(huart)->_rxdBuffer, sizeof(Uart::_rxdBuffer));
+}
+
+
 void Uart::rxdIrq(UART_HandleTypeDef *huart)
 {
+	logger.stop();
 	_wrPtr = sizeof(_rxdBuffer) - huart->hdmarx->Instance->CNDTR;
 	if (_wrPtr != _rdPtr)
 	{
@@ -63,26 +131,30 @@ void Uart::rxdIrq(UART_HandleTypeDef *huart)
 			rxdBytes(_rxdBuffer, _wrPtr);
 		}
 		_rdPtr = _wrPtr;
+	} else {
+		rxdBytes(_rxdBuffer, 0);
 	}
+	logger.resume();
 }
 
 void Uart::rxdBytes(uint8_t *data, size_t length)
 {
-	static uint64_t count = 0;
-	count = (count << 8) + length;
-//	INFO("rxdBytes %llX", count);
-	_rxd.onIsr(Bytes(data, data + length));
-}
-
-extern "C" void uartSendBytes(uint8_t *data, size_t size, uint32_t retries)
-{
-	uart2->sendBytes(Bytes(data, data + size));
+	for (size_t i = 0; i < length; i++)
+		_rxdData.write(data[i]);
+	_rxdAvailable.on(true);
 }
 
 extern "C" void DMA1_Channel6_IRQHandler(void)
 {
 	HAL_DMA_IRQHandler(&hdma_usart2_rx);
 }
+
+extern "C" void UART_DMAError(DMA_HandleTypeDef *hdma)
+{
+	while(1);
+}
+
+
 
 /**
  * @brief This function handles DMA1 channel7 global interrupt.
@@ -96,40 +168,6 @@ extern "C" void DMA1_Channel7_IRQHandler(void)
 	/* USER CODE BEGIN DMA1_Channel7_IRQn 1 */
 
 	/* USER CODE END DMA1_Channel7_IRQn 1 */
-}
-
-/* This function handles DMA1 stream6 global interrupt. */
-extern "C" void DMA1_Stream6_IRQHandler(void)
-{
-	HAL_DMA_IRQHandler(&hdma_usart2_tx);
-}
-
-extern "C" void UART_IDLECallback(UART_HandleTypeDef *huart)
-{
-	fromHandle(huart).rxdIrq(huart);
-	//	HAL_UART_Receive_DMA(huart, rxBuffer, sizeof(rxBuffer));
-}
-// restart DMA as first before getting data when buffer overflows.
-extern "C" void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
-{
-	HAL_UART_Receive_DMA(huart, fromHandle(huart)._rxdBuffer, sizeof(Uart::_rxdBuffer));
-	fromHandle(huart).rxdIrq(huart);
-}
-// get first half of buffer, to be ready before buffer full
-extern "C" void HAL_UART_RxHalfCpltCallback(UART_HandleTypeDef *huart)
-{
-	fromHandle(huart).rxdIrq(huart);
-	//	HAL_UART_Receive_DMA(huart, rxBuffer, sizeof(rxBuffer));
-}
-
-extern "C" void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
-{
-}
-
-extern "C" void DMADoneCallback(DMA_HandleTypeDef *hdma)
-{
-	while (1)
-		;
 }
 
 void Error_Handler(const char *file, uint32_t line)
@@ -193,7 +231,7 @@ void HAL_UART2_MspInit(UART_HandleTypeDef *huart)
 	hdma_usart2_rx.Init.MemInc = DMA_MINC_ENABLE;
 	hdma_usart2_rx.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
 	hdma_usart2_rx.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
-	hdma_usart2_rx.Init.Mode = DMA_NORMAL;
+	hdma_usart2_rx.Init.Mode = DMA_CIRCULAR;
 	hdma_usart2_rx.Init.Priority = DMA_PRIORITY_LOW;
 	if (HAL_DMA_Init(&hdma_usart2_rx) != HAL_OK)
 	{
@@ -264,14 +302,4 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef *huart)
 	}
 }
 
-extern "C" void USART2_IRQHandler(void)
-{
-	/* USER CODE BEGIN USART2_IRQn 0 */
-	extern void UART_IDLECallback(UART_HandleTypeDef * huart);
-	if (__HAL_UART_GET_FLAG(&huart2, UART_FLAG_IDLE) != RESET)
-	{
-		__HAL_UART_CLEAR_IDLEFLAG(&huart2);
-		UART_IDLECallback(&huart2);
-	}
-	HAL_UART_IRQHandler(&huart2);
-}
+

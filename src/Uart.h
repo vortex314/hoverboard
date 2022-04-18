@@ -14,18 +14,22 @@
 extern "C" UART_HandleTypeDef huart2;
 extern "C" DMA_HandleTypeDef hdma_usart2_rx;
 extern "C" DMA_HandleTypeDef hdma_usart2_tx;
+#include <CircBuf.h>
 
 class Uart : public Actor
 {
 	static const size_t FRAME_MAX = 128;
 
 	UART_HandleTypeDef *_huart;
-	Bytes _frameRxd;
-	size_t _wrPtr, _rdPtr;
-	QueueFlow<Bytes> _rxd;
+	ZeroFlow<Bytes> _rxd;
 	QueueFlow<Bytes> _txd;
+	QueueFlow<bool> _rxdAvailable;
+	CircBuf _rxdData;
 
 public:
+	bool _dmaTxdDone;
+	size_t _wrPtr, _rdPtr;
+
 	uint8_t _rxdBuffer[FRAME_MAX];
 	uint8_t _txdBuffer[FRAME_MAX];
 	uint32_t _txdOverflow = 0;

@@ -61,7 +61,7 @@
 
 // ###### CONTROL VIA UART (serial) ######
 // #define CONTROL_SERIAL_NAIVE_USART2               // left sensor board cable, disable if ADC or PPM is used!
-#define CONTROL_SERIAL_NAIVE_USART3 // right sensor board cable, disable if I2C (nunchuck or lcd) is used!
+// #define CONTROL_SERIAL_NAIVE_USART3 // right sensor board cable, disable if I2C (nunchuck or lcd) is used!
 
 // ###### CONTROL VIA RC REMOTE ######
 // left sensor board cable. Channel 1: steering, Channel 2: speed.
@@ -111,8 +111,8 @@
 #define USART3_BAUD 115200                   // UART baud rate
 #define USART3_WORDLENGTH UART_WORDLENGTH_8B // UART_WORDLENGTH_8B or UART_WORDLENGTH_9B
 
-#define SERIAL_USART_IT_BUFFERTYPE unsigned char // char or short
 #endif
+#define SERIAL_USART_IT_BUFFERTYPE unsigned char // char or short
 
 // ############################### DRIVING BEHAVIOR ###############################
 

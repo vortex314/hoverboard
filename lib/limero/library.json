@@ -10,8 +10,7 @@
         "srcFilter":["+<src/>","+<nortos/>"],
         "includeDir":"/home/lieven/workspace/limero/inc",
         "flags": [
-            "-I /home/lieven/workspace/components/inc",
-            "-I /home/lieven/workspace/tinycbor/src",
+            "-I /home/lieven/workspace/limero/inc",
             "-mcpu=cortex-m3",
             "-mthumb",
             "-fdata-sections",

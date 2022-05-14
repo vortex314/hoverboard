@@ -10,8 +10,7 @@ Uart *fromHandle(UART_HandleTypeDef *huart)
 
 Uart::Uart(Thread &thread, UART_HandleTypeDef *huart)
 	: Actor(thread), _huart(huart),
-	  _rxdAvailable(15, "Uart:rxd"),
-	  _txd(7, "Uart:txd"), _rxdData(FRAME_MAX * 2)
+	  _txd(7, "Uart:txd"), _rxdAvailable(15, "Uart:rxd"), _rxdData(FRAME_MAX * 2)
 {
 	_rxdAvailable.async(thread);
 	_txd.async(thread);
@@ -49,9 +48,7 @@ bool Uart::init()
 	return true;
 }
 
-
 // empty DMA buffer
-
 
 extern "C" void uartSendBytes(uint8_t *data, size_t size, uint32_t retries)
 {
@@ -111,9 +108,8 @@ extern "C" void HAL_UART_RxHalfCpltCallback(UART_HandleTypeDef *huart)
 extern "C" void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
 	fromHandle(huart)->rxdIrq(huart);
-//	HAL_UART_Receive_DMA(huart, fromHandle(huart)->_rxdBuffer, sizeof(Uart::_rxdBuffer));
+	//	HAL_UART_Receive_DMA(huart, fromHandle(huart)->_rxdBuffer, sizeof(Uart::_rxdBuffer));
 }
-
 
 void Uart::rxdIrq(UART_HandleTypeDef *huart)
 {
@@ -131,7 +127,9 @@ void Uart::rxdIrq(UART_HandleTypeDef *huart)
 			rxdBytes(_rxdBuffer, _wrPtr);
 		}
 		_rdPtr = _wrPtr;
-	} else {
+	}
+	else
+	{
 		rxdBytes(_rxdBuffer, 0);
 	}
 	logger.resume();
@@ -151,10 +149,9 @@ extern "C" void DMA1_Channel6_IRQHandler(void)
 
 extern "C" void UART_DMAError(DMA_HandleTypeDef *hdma)
 {
-	while(1);
+	while (1)
+		;
 }
-
-
 
 /**
  * @brief This function handles DMA1 channel7 global interrupt.
@@ -301,5 +298,3 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef *huart)
 		/* USER CODE END USART2_MspDeInit 1 */
 	}
 }
-
-

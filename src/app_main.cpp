@@ -39,7 +39,8 @@ extern "C" void app_main_init()
 
     uart2->init();
     as5600->init();
-    as5600->onFailure(NULL, [](void *pv, const char *s) { /*WARN(" StepperServo AS5600 : %s ", s);*/ });
+    as5600->onFailure([](Error& error)
+                      { WARN(" AS5600 failure: %s = %d ", error.message,error.code); });
     INFO("app_main() entry");
     Sys::hostname("hover");
     spine = new RedisSpine(*spineThread);
@@ -47,8 +48,8 @@ extern "C" void app_main_init()
 
     uart2->rxd() >> ppp->deframe() >> spine->rxdFrame;
     spine->txdFrame >> ppp->frame() >> uart2->txd();
-    ppp->garbage() >> [](const Bytes &bs) { WARN("garbage [%d] ", bs.size()); };
-  //  uart2->rxd() >> [](const Bytes& bs){ WARN("rxd [%d]", bs.size()); };
+    ppp->garbage() >> [](const Bytes &bs)
+    { WARN("garbage [%d] ", bs.size()); };
 
     controlTimer = new TimerSource(*spineThread, 50, true, "controlTimer");
     reportTimer = new TimerSource(*spineThread, 100, true, "reportTimer");

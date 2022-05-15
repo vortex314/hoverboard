@@ -34,7 +34,7 @@ uint16_t As5600::readReg16(uint8_t address)
 {
   uint8_t reg[10];
   VALIDATE(_i2c.write(address));
-  VALIDATE(_i2c.read(reg, 3));
+  VALIDATE(_i2c.read(reg, 3)); // read more bytes than necessary to avoid STM32 bug :-(
   return (reg[0] << 8) | reg[1];
 }
 

@@ -1,0 +1,3 @@
+[submodule "limero"]
+	path = limero
+	url = https://github.com/vortex314/limero

@@ -367,87 +367,6 @@ void controlLoop()
   float scale = ppm_captured_value[2] / 1000.0f;
 #endif
 
-#ifdef CONTROL_ADC
-  // ADC values range: 0-4095, see ADC-calibration in config.h
-
-#ifdef ADC_SWITCH_CHANNELS
-
-  if (adc_buffer.l_rx2 < ADC2_ZERO)
-  {
-    cmd1_ADC = (CLAMP(adc_buffer.l_rx2, ADC2_MIN, ADC2_ZERO) - ADC2_ZERO) / ((ADC2_ZERO - ADC2_MIN) / ADC2_MULT_NEG); // ADC2 - Steer
-  }
-  else
-  {
-    cmd1_ADC = (CLAMP(adc_buffer.l_rx2, ADC2_ZERO, ADC2_MAX) - ADC2_ZERO) / ((ADC2_MAX - ADC2_ZERO) / ADC2_MULT_POS); // ADC2 - Steer
-  }
-
-  if (adc_buffer.l_tx2 < ADC1_ZERO)
-  {
-    cmd2_ADC = (CLAMP(adc_buffer.l_tx2, ADC1_MIN, ADC1_ZERO) - ADC1_ZERO) / ((ADC1_ZERO - ADC1_MIN) / ADC1_MULT_NEG); // ADC1 - Speed
-  }
-  else
-  {
-    cmd2_ADC = (CLAMP(adc_buffer.l_tx2, ADC1_ZERO, ADC1_MAX) - ADC1_ZERO) / ((ADC1_MAX - ADC1_ZERO) / ADC1_MULT_POS); // ADC1 - Speed
-  }
-
-  if ((adc_buffer.l_tx2 < ADC_OFF_START) || (adc_buffer.l_tx2 > ADC_OFF_END))
-  {
-    ADCcontrolActive = true;
-  }
-  else
-  {
-    if (ADCcontrolActive)
-    {
-      cmd1 = 0;
-      cmd2 = 0;
-    }
-    ADCcontrolActive = false;
-  }
-
-#else
-
-  if (adc_buffer.l_tx2 < ADC1_ZERO)
-  {
-    cmd1_ADC = (CLAMP(adc_buffer.l_tx2, ADC1_MIN, ADC1_ZERO) - ADC1_ZERO) / ((ADC1_ZERO - ADC1_MIN) / ADC1_MULT_NEG); // ADC1 - Steer
-  }
-  else
-  {
-    cmd1_ADC = (CLAMP(adc_buffer.l_tx2, ADC1_ZERO, ADC1_MAX) - ADC1_ZERO) / ((ADC1_MAX - ADC1_ZERO) / ADC1_MULT_POS); // ADC1 - Steer
-  }
-
-  if (adc_buffer.l_rx2 < ADC2_ZERO)
-  {
-    cmd2_ADC = (CLAMP(adc_buffer.l_rx2, ADC2_MIN, ADC2_ZERO) - ADC2_ZERO) / ((ADC2_ZERO - ADC2_MIN) / ADC2_MULT_NEG); // ADC2 - Speed
-  }
-  else
-  {
-    cmd2_ADC = (CLAMP(adc_buffer.l_rx2, ADC2_ZERO, ADC2_MAX) - ADC2_ZERO) / ((ADC2_MAX - ADC2_ZERO) / ADC2_MULT_POS); // ADC2 - Speed
-  }
-
-  if ((adc_buffer.l_rx2 < ADC_OFF_START) || (adc_buffer.l_rx2 > ADC_OFF_END))
-  {
-    ADCcontrolActive = true;
-  }
-  else
-  {
-    if (ADCcontrolActive)
-    {
-      cmd1 = 0;
-      cmd2 = 0;
-    }
-    ADCcontrolActive = false;
-  }
-
-#endif
-
-#ifdef ADC_REVERSE_STEER
-  cmd1_ADC = -cmd1_ADC;
-#endif
-
-  // use ADCs as button inputs:
-  button1_ADC = (uint8_t)(adc_buffer.l_tx2 > 2000); // ADC1
-  button2_ADC = (uint8_t)(adc_buffer.l_rx2 > 2000); // ADC2
-#endif
 
 #if defined(CONTROL_SERIAL_NAIVE_USART2) || defined(CONTROL_SERIAL_NAIVE_USART3)
   /*   if (checkCRC2(&command)) //ROBO
@@ -466,14 +385,7 @@ void controlLoop()
   timeout = 0;
 #endif
 
-#if defined CONTROL_ADC
-  if (ADCcontrolActive)
-  {
-    cmd1 = cmd1_ADC;
-    cmd2 = cmd2_ADC;
-    timeout = 0;
-  }
-#endif
+
 
 #ifdef SPEED_IS_KMH
   long iSpeed;
@@ -624,10 +536,6 @@ void controlLoop()
     //ROBO end
 
 // ####### DEBUG SERIAL OUT #######
-#ifdef CONTROL_ADC
-    setScopeChannel(0, (int)adc_buffer.l_tx2);          // 1: ADC1
-    setScopeChannel(1, (int)adc_buffer.l_rx2);          // 2: ADC2
-#endif
     setScopeChannel(2, (int)speedR);                    // 3: output speed: 0-1000
     setScopeChannel(3, (int)speedL);                    // 4: output speed: 0-1000
     setScopeChannel(4, (int)adc_buffer.batt1);          // 5: for battery voltage calibration
@@ -775,6 +683,7 @@ void softWatchdogReset()
 void inactivityReset()
 {
   inactivity_timeout_counter = 0;
+  timeout=0;
 }
 
 /** System Clock Configuration

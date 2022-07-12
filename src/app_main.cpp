@@ -26,10 +26,71 @@ extern UART_HandleTypeDef huart2;
 Sink<int> *reportSpeed;
 
 extern "C" Properties properties;
+extern int speedR, speedL;
+extern  int pwmr, pwml;
 
 uint32_t counter = 0;
 
 Log logger;
+
+float PID(float error, float &integral, float &derivative, float &lastError, float &lastTime, float &KP, float &KI, float &KD)
+{
+    float output;
+    float time = Sys::millis() / 1000.0;
+    float dt = time - lastTime;
+    integral += error * dt;
+    derivative = (error - lastError) / dt;
+    output = KP * error + KI * integral + KD * derivative;
+    lastError = error;
+    lastTime = time;
+    return output;
+}
+
+float lastTime = 0;
+float integral = 0;
+float derivative = 0;
+float lastError = 0;
+float KP = 1.0;
+float KI = 0.1;
+float KD = 0;
+
+void controlSteer()
+{
+    if (as5600)
+    {
+        properties.angleMeasured = as5600->degrees();
+        int delta = PID(properties.angleTarget - properties.angleMeasured, integral, derivative, lastError, lastTime, KP, KI, KD);
+        properties.steerTarget = delta;
+        watchdogTimer->reset();
+    }
+}
+
+typedef struct
+{
+    char type;
+    const char *name;
+    void *value;
+} Property;
+
+Property properties_list[] = {
+    {'i', "src/hover/motor/angleTarget", &properties.angleTarget},
+    {'i', "src/hover/motor/angleMeasured", &properties.angleMeasured},
+    {'i', "src/hover/motor/steerTarget", &properties.steerTarget},
+    {'i', "src/hover/motor/speedTarget", &properties.speedTarget},
+    {'i', "src/hover/motor/speedR", &speedR},
+    {'i', "src/hover/motor/speedL", &speedL},
+    {'f', "src/hover/motor/speedLeft", &properties.speedLeft},
+    {'f', "src/hover/motor/speedRight", &properties.speedRight},
+    {'i', "src/hover/motor/pwmr", &pwmr},
+    {'i', "src/hover/motor/pwml", &pwml},
+    {'u', "src/hover/motor/hallSkippedLeft", &properties.hallSkippedLeft},
+    {'u', "src/hover/motor/hallSkippedRight", &properties.hallSkippedRight},
+    {'f', "src/hover/motor/voltage", &properties.voltage},
+    {'f', "src/hover/motor/temperature", &properties.temperature},
+    {'f', "src/hover/motor/currentLeft", &properties.currentLeft},
+    {'f', "src/hover/motor/currentRight", &properties.currentRight}};
+
+#define PROPERTIES_LIST_SIZE (sizeof(properties_list) / sizeof(Property))
 
 extern "C" void app_main_init()
 {
@@ -55,7 +116,10 @@ extern "C" void app_main_init()
     reportTimer = new TimerSource(*spineThread, 100, true, "reportTimer");
     watchdogTimer = new TimerSource(*spineThread, 3000, true, "watchdogTimer");
     *controlTimer >> [](const TimerMsg &)
-    { controlLoop(); };
+    {
+        controlLoop();
+        //     controlSteer();
+    };
 
     // stop drive when offline
     *watchdogTimer >> [](const TimerMsg &)
@@ -65,17 +129,24 @@ extern "C" void app_main_init()
     };
     controlInit();
     spine->init();
-    spine->subscriber<int32_t>("motor/speed") >>
+    spine->subscriber<int32_t>("motor/speedTarget") >>
         [&](const int32_t &w)
     {
         properties.speedTarget = w;
         INFO("speed %d", w);
     };
-    spine->subscriber<int32_t>("motor/steer") >>
+    spine->subscriber<int32_t>("motor/steerTarget") >>
         [&](const int32_t &w)
     {
         properties.steerTarget = w;
         INFO("steer %d", w);
+    };
+
+    spine->subscriber<int32_t>("motor/angleTarget") >>
+        [&](const int32_t &w)
+    {
+        properties.angleTarget = CLAMP(w, -90, 90);
+        INFO("angleTarget %d", w);
     };
     // stop drive when offline
     spine->subscriber<bool>("motor/watchdogReset") >>
@@ -87,63 +158,22 @@ extern "C" void app_main_init()
     *reportTimer >> [&](const TimerMsg &)
     {
         counter++;
-        switch (counter % 11)
+        Property *p = &properties_list[counter % PROPERTIES_LIST_SIZE];
+        properties.angleMeasured = as5600->degrees();
+        switch (p->type)
         {
-        case 0:
-        {
-            spine->publish<uint32_t>("src/hover/motor/speedTarget", properties.speedTarget);
+        case 'i':
+            spine->publish<int32_t>(p->name, *((int32_t *)p->value));
             break;
-        }
-        case 1:
-        {
-            spine->publish<uint32_t>("src/hover/motor/steerTarget", properties.steerTarget);
+        case 'u':
+            spine->publish<uint32_t>(p->name, *((uint32_t *)p->value));
             break;
-        }
-        case 2:
-        {
-            spine->publish<float>("src/hover/motor/speedLeft", properties.speedLeft);
+        case 'f':
+            spine->publish<float>(p->name, *((float *)p->value));
             break;
-        }
-        case 3:
-        {
-            spine->publish<float>("src/hover/motor/speedRight", properties.speedRight);
+
+        default:
             break;
-        }
-        case 4:
-        {
-            spine->publish<uint32_t>("src/hover/motor/hallSkippedLeft", properties.hallSkippedLeft);
-            break;
-        }
-        case 5:
-        {
-            spine->publish<uint32_t>("src/hover/motor/hallSkippedRight", properties.hallSkippedRight);
-            break;
-        }
-        case 6:
-        {
-            spine->publish<float>("src/hover/motor/voltage", properties.voltage);
-            break;
-        }
-        case 7:
-        {
-            spine->publish<float>("src/hover/motor/temperature", properties.temperature);
-            break;
-        }
-        case 8:
-        {
-            spine->publish<float>("src/hover/motor/currentLeft", properties.currentLeft);
-            break;
-        }
-        case 9:
-        {
-            spine->publish<float>("src/hover/motor/currentRight", properties.currentRight);
-            break;
-        }
-        case 10:
-        {
-            spine->publish<int>("src/hover/motor/angle", as5600->degrees());
-            break;
-        }
         }
     };
     INFO("app_main() exit");

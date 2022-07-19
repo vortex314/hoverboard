@@ -1,24 +1,27 @@
 {
-    "name": "limero",
-    "version": "0.0.1",
-    "keywords": "stream",
-    "description": "Reactive streaming",
-    "platforms": "ststm32",
-    "build": {
-        "libArchive": false,
-        "srcDir":"/home/lieven/workspace/hoverboard/limero",
-        "srcFilter":["+<src/>","+<nortos/>"],
-        "includeDir":"/home/lieven/workspace/hoverboard/limero/inc",
-        "flags": [
-            "-I /home/lieven/workspace/hoverboard/limero/inc",
-            "-mcpu=cortex-m3",
-            "-mthumb",
-            "-fdata-sections",
-            "-ffunction-sections",
-            "-DSTM32F103xE",
-            "-D__STM32__",
-            "-Wall",
-            "-O3"
-        ]
-    }
+  "name": "limero",
+  "version": "0.0.1",
+  "keywords": "stream",
+  "description": "Reactive streaming",
+  "platforms": "ststm32",
+  "build": {
+    "libArchive": false,
+    "srcDir": "/home/lieven/workspace/hoverboard/limero",
+    "srcFilter": ["+<src/>", "+<nortos/>"],
+    "includeDir": "/home/lieven/workspace/hoverboard/limero/inc",
+    "flags": [
+      "-I /home/lieven/workspace/hoverboard/limero/inc",
+      "-mcpu=cortex-m3",
+      "-mthumb",
+      "-fdata-sections",
+      "-ffunction-sections",
+      "-DSTM32F103xE",
+      "-D__STM32__",
+      "-Wall",
+      "-O3"
+    ]
+  },
+  "dependencies": {
+    "bblanchon/ArduinoJson": "^6.19.4"
+  }
 }

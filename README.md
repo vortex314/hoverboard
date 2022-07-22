@@ -1,49 +1,13 @@
 
 https://github.com/RoboDurden/hoverboard-firmware-hack
 
+# Redis to Hoverboard JSON communication
+A serial port protocol where Redis commands are exchanged in a JSON format.
+The hoverboard subscribes to published messages based on channel pattern : 'dst/hover/*'
+During the communication initiation phase the STM32 controller sends continously the following command sequence :
+  - ["PSUBSCRIBE","dst/hover/*"] => subscribe to channel pattern
+  - ["HELLO","3"] => initiate RESP2 protocol to use the same TCP link for subscribing as executing random commands
 
-# better UART communication (bi-directional) with km/h speed control and max-recuperation
-
-Only use this fork when you want to control 
-
-```
-typedef struct{
-   int16_t steer;
-   int16_t speed;
-   uint32_t crc;
-} Serialcommand;
-```
-
-and/or read
-
-```
-typedef struct{
-   int16_t iSpeedL;		// 100* km/h
-   int16_t iSpeedR;		// 100* km/h
-   uint16_t iHallSkippedL;
-   uint16_t iHallSkippedR;
-   uint16_t iTemp;		// °C
-   uint16_t iVolt;		// 100* V
-   int16_t iAmpL;		// 100* A
-   int16_t iAmpR;		// 100* A
-   uint32_t crc;
-} SerialFeedback;
-```
-
-via uart !
-
-
-## Compiling
-
-1. Simply select this repo in my online compiler https://pionierland.de/hoverhack 
-2. Choose a default configuration or edit config.h and main.c as you like
-3. Hit the compile button :-)
-
-## Controlling
-
-have a look at the Arduino example code:
-
-https://github.com/RoboDurden/hoverboard-firmware-hack/blob/master/hoverserial.ino
 
 ## troubleshooting
 

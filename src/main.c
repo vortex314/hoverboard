@@ -244,7 +244,7 @@ int main(void)
 #endif
 
 #ifdef HALL_INTERRUPTS
-  // enables interrupt reading of hall sensors for dead reconing wheel position.
+  // enables interrupt reading of hall sensors for dead reckoning wheel position.
   HallInterruptinit();
 #endif
 
@@ -499,51 +499,7 @@ void controlLoop()
     properties.voltage = batteryVoltage;
     properties.currentLeft = currentL;
     properties.currentRight = currentR;
-//ROBO begin
-#if defined DEBUG_SERIAL_FEEDBACK && (defined DEBUG_SERIAL_USART2 || defined DEBUG_SERIAL_USART3)
 
-    if (UART_DMA_CHANNEL->CNDTR == 0)
-    {
-      oFeedback.iSpeedL = (int)(float)HallData[0].HallSpeed_mm_per_s * 0.36f;
-      oFeedback.iSpeedR = (int)(float)HallData[1].HallSpeed_mm_per_s * 0.36f;
-      oFeedback.iHallSkippedL = HallData[0].HallSkipped;
-      oFeedback.iHallSkippedR = HallData[1].HallSkipped;
-      oFeedback.iTemp = (int)board_temp_deg_c;
-      oFeedback.iVolt = (int)(batteryVoltage * 100.0f);
-      oFeedback.iAmpL = (int)(currentL * 100.0f);
-      oFeedback.iAmpR = (int)(currentR * 100.0f);
-      oFeedback.crc = 0;
-      crc32((const void *)&oFeedback, sizeof(oFeedback) - 4, &oFeedback.crc);
-
-      /*			oFeedback.iSpeedL	= 1;
-			oFeedback.iSpeedR	= 2;
-			oFeedback.iHallSkippedL	= 3;
-			oFeedback.iHallSkippedR	= 4;
-			oFeedback.iTemp	= (int)	5;
-			oFeedback.iVolt	= (int)	6;
-			oFeedback.iAmpL = (int)	7;
-			oFeedback.iAmpR = (int)	8;
-			oFeedback.crc = 0;
-			crc32((const void *)&oFeedback, sizeof(oFeedback)-4, &oFeedback.crc);
-*/
-
-      UART_DMA_CHANNEL->CCR &= ~DMA_CCR_EN;
-      UART_DMA_CHANNEL->CNDTR = sizeof(oFeedback);
-      UART_DMA_CHANNEL->CMAR = (uint32_t)&oFeedback;
-      UART_DMA_CHANNEL->CCR |= DMA_CCR_EN;
-    }
-#else
-    //ROBO end
-
-// ####### DEBUG SERIAL OUT #######
-    setScopeChannel(2, (int)speedR);                    // 3: output speed: 0-1000
-    setScopeChannel(3, (int)speedL);                    // 4: output speed: 0-1000
-    setScopeChannel(4, (int)adc_buffer.batt1);          // 5: for battery voltage calibration
-    setScopeChannel(5, (int)(batteryVoltage * 100.0f)); // 6: for verifying battery voltage calibration
-    setScopeChannel(6, (int)board_temp_adc_filtered);   // 7: for board temperature calibration
-    setScopeChannel(7, (int)board_temp_deg_c);          // 8: for verifying board temperature calibration
-    consoleScope();
-#endif //ROBO
   }
 
   // ####### POWEROFF BY POWER-BUTTON #######

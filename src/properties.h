@@ -15,6 +15,7 @@ typedef struct
     float voltage;     // V
     float currentLeft; // A
     float currentRight;
+    const char* version;
 } Properties;
 
 #endif

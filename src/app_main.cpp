@@ -73,6 +73,7 @@ typedef struct
 } Property;
 
 Property properties_list[] = {
+    {'c', "src/hover/system/version", (void*)properties.version},
     {'i', "src/hover/motor/angleTarget", &properties.angleTarget},
     {'i', "src/hover/motor/angleMeasured", &properties.angleMeasured},
     {'i', "src/hover/motor/steerTarget", &properties.steerTarget},
@@ -97,6 +98,7 @@ extern "C" void app_main_init()
     spineThread = new Thread("spineThread");
     uart2 = new Uart(*spineThread, &huart2);
     as5600 = new As5600(I2C::create(0, 0));
+    properties.version = __DATE__ " " __TIME__;
 
     uart2->init();
     as5600->init();
@@ -171,7 +173,11 @@ extern "C" void app_main_init()
         case 'f':
             spine->publish<float>(p->name, *((float *)p->value));
             break;
-
+        case 'c': {
+            static std::string s = (const char*)p->value;
+            spine->publish<std::string>(p->name, s);
+            break;
+        }
         default:
             break;
         }

@@ -1,23 +1,23 @@
 /*
-* This file is part of the hoverboard-firmware-hack project.
-*
-* Copyright (C) 2017-2018 Rene Hopf <renehopf@mac.com>
-* Copyright (C) 2017-2018 Nico Stute <crinq@crinq.de>
-* Copyright (C) 2017-2018 Niklas Fauth <niklas.fauth@kit.fail>
-*
-* This program is free software: you can redistribute it and/or modify
-* it under the terms of the GNU General Public License as published by
-* the Free Software Foundation, either version 3 of the License, or
-* (at your option) any later version.
-*
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU General Public License for more details.
-*
-* You should have received a copy of the GNU General Public License
-* along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
+ * This file is part of the hoverboard-firmware-hack project.
+ *
+ * Copyright (C) 2017-2018 Rene Hopf <renehopf@mac.com>
+ * Copyright (C) 2017-2018 Nico Stute <crinq@crinq.de>
+ * Copyright (C) 2017-2018 Niklas Fauth <niklas.fauth@kit.fail>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
 #include "stm32f1xx_hal.h"
 #include "defines.h"
@@ -38,7 +38,7 @@ extern TIM_HandleTypeDef htim_right;
 extern ADC_HandleTypeDef hadc1;
 extern ADC_HandleTypeDef hadc2;
 extern volatile adc_buf_t adc_buffer;
-//LCD_PCF8574_HandleTypeDef lcd;
+// LCD_PCF8574_HandleTypeDef lcd;
 extern I2C_HandleTypeDef hi2c2;
 extern UART_HandleTypeDef huart2;
 extern UART_HandleTypeDef huart3;
@@ -62,7 +62,7 @@ typedef struct
 } Serialcommand;
 volatile Serialcommand command;
 
-//ROBO begin
+// ROBO begin
 typedef struct
 {
   int16_t iSpeedL; // 100* km/h
@@ -77,15 +77,41 @@ typedef struct
 } SerialFeedback;
 SerialFeedback oFeedback; // volatile
 
-Properties properties = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-
+Properties properties = {
+    .steerTarget = 0,
+    .angleTarget = 0,
+    .angleMeasured = 0,
+    .speedLeft = 0,
+    .speedRight = 0,
+    .hallSkippedLeft = 0,
+    .hallSkippedRight = 0,
+    .temperature = 0,
+    .voltage = 0,
+    .currentLeft = 0,
+    .currentRight = 0,
+    .version = "no-version"};
+/*
+speedTarget;
+    int32_t steerTarget;
+    int32_t angleTarget;
+    int32_t angleMeasured;
+    float speedLeft;  //  km/h
+    float speedRight; //  km/h
+    uint32_t hallSkippedLeft;
+    uint32_t hallSkippedRight;
+    float temperature; // °C
+    float voltage;     // V
+    float currentLeft; // A
+    float currentRight;
+    const char* version; // __DATE __TIME
+*/
 #ifdef DEBUG_SERIAL_USART3
 #define UART_DMA_CHANNEL DMA1_Channel2
 #endif
 #ifdef DEBUG_SERIAL_USART2
 #define UART_DMA_CHANNEL DMA1_Channel7
 #endif
-//ROBO end
+// ROBO end
 
 int disablepoweroff = 0;
 int powerofftimer = 0;
@@ -153,7 +179,7 @@ void poweroff()
   }
 }
 
-//ROBO begin
+// ROBO begin
 #if defined(CONTROL_SERIAL_NAIVE_USART2) || defined(CONTROL_SERIAL_NAIVE_USART3)
 bool checkCRC2(volatile Serialcommand *command)
 {
@@ -184,7 +210,7 @@ bool checkCRC2(volatile Serialcommand *command)
   return false;
 }
 #endif
-//ROBO end
+// ROBO end
 
 extern void app_main_init();
 extern void app_main_loop();
@@ -285,7 +311,7 @@ int main(void)
   if (LCD_Init(&lcd) != LCD_OK)
   {
     // error occured
-    //TODO while(1);
+    // TODO while(1);
   }
 
   LCD_ClearDisplay(&lcd);
@@ -367,7 +393,6 @@ void controlLoop()
   float scale = ppm_captured_value[2] / 1000.0f;
 #endif
 
-
 #if defined(CONTROL_SERIAL_NAIVE_USART2) || defined(CONTROL_SERIAL_NAIVE_USART3)
   /*   if (checkCRC2(&command)) //ROBO
     {
@@ -379,13 +404,11 @@ void controlLoop()
       cmd1 = 0;
       cmd2 = 0;
     }*/
-  //cmd1=50;
-  //cmd2 = -100;
+  // cmd1=50;
+  // cmd2 = -100;
 
   timeout = 0;
 #endif
-
-
 
 #ifdef SPEED_IS_KMH
   long iSpeed;
@@ -430,7 +453,7 @@ void controlLoop()
   }
   else if (iSpeed < (iSpeed_Goal - 56))
   {
-    //cmd2Goal += 3;
+    // cmd2Goal += 3;
     cmd2Goal += CLAMP((iSpeed_Goal - iSpeed) / 56, 1, 3);
     if ((iSpeed_Goal < -56) && (cmd2Goal > -2))
       cmd2Goal = -2; // don't set forward speed when iSpeed_goal is set backwards
@@ -483,7 +506,7 @@ void controlLoop()
   lastSpeedR = speedR;
 
   iLog++;
-  //if (inactivity_timeout_counter % 25 == 0)
+  // if (inactivity_timeout_counter % 25 == 0)
   if (iLog * DELAY_IN_MAIN_LOOP > 200) // log every 200 ms
   {
     iLog = 0;
@@ -499,7 +522,6 @@ void controlLoop()
     properties.voltage = batteryVoltage;
     properties.currentLeft = currentL;
     properties.currentRight = currentR;
-
   }
 
   // ####### POWEROFF BY POWER-BUTTON #######
@@ -639,11 +661,11 @@ void softWatchdogReset()
 void inactivityReset()
 {
   inactivity_timeout_counter = 0;
-  timeout=0;
+  timeout = 0;
 }
 
 /** System Clock Configuration
-*/
+ */
 void SystemClock_Config(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct;
@@ -651,7 +673,7 @@ void SystemClock_Config(void)
   RCC_PeriphCLKInitTypeDef PeriphClkInit;
 
   /**Initializes the CPU, AHB and APB busses clocks
-    */
+   */
   RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
   RCC_OscInitStruct.HSICalibrationValue = 16;
@@ -661,7 +683,7 @@ void SystemClock_Config(void)
   HAL_RCC_OscConfig(&RCC_OscInitStruct);
 
   /**Initializes the CPU, AHB and APB busses clocks
-    */
+   */
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
@@ -675,11 +697,11 @@ void SystemClock_Config(void)
   HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit);
 
   /**Configure the Systick interrupt time
-    */
+   */
   HAL_SYSTICK_Config(HAL_RCC_GetHCLKFreq() / 1000);
 
   /**Configure the Systick
-    */
+   */
   HAL_SYSTICK_CLKSourceConfig(SYSTICK_CLKSOURCE_HCLK);
 
   /* SysTick_IRQn interrupt configuration */

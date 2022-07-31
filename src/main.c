@@ -90,21 +90,7 @@ Properties properties = {
     .currentLeft = 0,
     .currentRight = 0,
     .version = "no-version"};
-/*
-speedTarget;
-    int32_t steerTarget;
-    int32_t angleTarget;
-    int32_t angleMeasured;
-    float speedLeft;  //  km/h
-    float speedRight; //  km/h
-    uint32_t hallSkippedLeft;
-    uint32_t hallSkippedRight;
-    float temperature; // °C
-    float voltage;     // V
-    float currentLeft; // A
-    float currentRight;
-    const char* version; // __DATE __TIME
-*/
+
 #ifdef DEBUG_SERIAL_USART3
 #define UART_DMA_CHANNEL DMA1_Channel2
 #endif

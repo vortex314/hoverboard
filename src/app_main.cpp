@@ -23,7 +23,7 @@ Uart *uart2;
 As5600 *as5600;
 PPP *ppp;
 extern UART_HandleTypeDef huart2;
-Sink<int> *reportSpeed;
+//Sink<int> *reportSpeed;
 
 extern "C" Properties properties;
 extern int speedR, speedL;

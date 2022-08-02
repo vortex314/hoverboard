@@ -33,6 +33,14 @@ uint32_t counter = 0;
 
 Log logger;
 
+float lastTime = 0;
+float integral = 0;
+float derivative = 0;
+float lastError = 0;
+float KP = -10.0;
+float KI = -1.0;
+float KD = 0.;
+
 float PID(float error, float &integral, float &derivative, float &lastError, float &lastTime, float &KP, float &KI, float &KD)
 {
     float output;
@@ -46,22 +54,13 @@ float PID(float error, float &integral, float &derivative, float &lastError, flo
     return output;
 }
 
-float lastTime = 0;
-float integral = 0;
-float derivative = 0;
-float lastError = 0;
-float KP = 1.0;
-float KI = 0.1;
-float KD = 0;
-
 void controlSteer()
 {
     if (as5600)
     {
         properties.angleMeasured = as5600->degrees();
         int delta = PID(properties.angleTarget - properties.angleMeasured, integral, derivative, lastError, lastTime, KP, KI, KD);
-        properties.steerTarget = delta;
-        watchdogTimer->reset();
+        properties.steerTarget = CLAMP(delta,-600,600);
     }
 }
 
@@ -120,7 +119,7 @@ extern "C" void app_main_init()
     *controlTimer >> [](const TimerMsg &)
     {
         controlLoop();
-        //     controlSteer();
+        controlSteer();
     };
 
     // stop drive when offline

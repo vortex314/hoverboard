@@ -446,9 +446,8 @@ void controlLoop()
     else if (cmd2Goal > 1000)
       cmd2Goal = 1000;
   }
-  UART2_Init
 
-      speed = cmd2Goal;
+  speed = cmd2Goal;
   steer = steer * (1.0 - FILTER) + cmd1 * FILTER;
 
 #else
@@ -456,7 +455,8 @@ void controlLoop()
   cmd2 = CLAMP(properties.speedTarget, -1000, 1000);
   cmd1 = CLAMP(properties.steerTarget, -1000, 1000);
   // ####### LOW-PASS FILTER #######
-  steer = steer * (1.0 - FILTER) + cmd1 * FILTER;
+  // steer = steer * (1.0 - FILTER) + cmd1 * FILTER; // no low pass here
+  steer = cmd1;
   speed = speed * (1.0 - FILTER) + cmd2 * FILTER;
 #endif
 

@@ -23,7 +23,7 @@ Uart *uart2;
 As5600 *as5600;
 PPP *ppp;
 extern UART_HandleTypeDef huart2;
-Sink<int> *reportSpeed;
+//Sink<int> *reportSpeed;
 
 extern "C" Properties properties;
 extern int speedR, speedL;
@@ -32,6 +32,14 @@ extern  int pwmr, pwml;
 uint32_t counter = 0;
 
 Log logger;
+
+float lastTime = 0;
+float integral = 0;
+float derivative = 0;
+float lastError = 0;
+float KP = -10.0;
+float KI = -1.0;
+float KD = 0.;
 
 float PID(float error, float &integral, float &derivative, float &lastError, float &lastTime, float &KP, float &KI, float &KD)
 {
@@ -46,22 +54,13 @@ float PID(float error, float &integral, float &derivative, float &lastError, flo
     return output;
 }
 
-float lastTime = 0;
-float integral = 0;
-float derivative = 0;
-float lastError = 0;
-float KP = 1.0;
-float KI = 0.1;
-float KD = 0;
-
 void controlSteer()
 {
     if (as5600)
     {
         properties.angleMeasured = as5600->degrees();
         int delta = PID(properties.angleTarget - properties.angleMeasured, integral, derivative, lastError, lastTime, KP, KI, KD);
-        properties.steerTarget = delta;
-        watchdogTimer->reset();
+        properties.steerTarget = CLAMP(delta,-600,600);
     }
 }
 
@@ -73,6 +72,7 @@ typedef struct
 } Property;
 
 Property properties_list[] = {
+    {'c', "src/hover/system/version", (void*)properties.version},
     {'i', "src/hover/motor/angleTarget", &properties.angleTarget},
     {'i', "src/hover/motor/angleMeasured", &properties.angleMeasured},
     {'i', "src/hover/motor/steerTarget", &properties.steerTarget},
@@ -97,6 +97,7 @@ extern "C" void app_main_init()
     spineThread = new Thread("spineThread");
     uart2 = new Uart(*spineThread, &huart2);
     as5600 = new As5600(I2C::create(0, 0));
+    properties.version = __DATE__ " " __TIME__;
 
     uart2->init();
     as5600->init();
@@ -118,7 +119,7 @@ extern "C" void app_main_init()
     *controlTimer >> [](const TimerMsg &)
     {
         controlLoop();
-        //     controlSteer();
+        controlSteer();
     };
 
     // stop drive when offline
@@ -171,7 +172,11 @@ extern "C" void app_main_init()
         case 'f':
             spine->publish<float>(p->name, *((float *)p->value));
             break;
-
+        case 'c': {
+            static std::string s = (const char*)p->value;
+            spine->publish<std::string>(p->name, s);
+            break;
+        }
         default:
             break;
         }

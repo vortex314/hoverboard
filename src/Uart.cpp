@@ -23,8 +23,8 @@ Uart::Uart(Thread &thread, UART_HandleTypeDef *huart)
 	_rxdAvailable >> [&](const bool &) // empty circular buffer
 	{
 		Bytes bs;
-		bs.reserve(128);
-		while (_rxdData.hasData() && bs.size() < 128)
+		bs.reserve(FRAME_MAX);
+		while (_rxdData.hasData() && bs.size() < FRAME_MAX)
 			bs.push_back(_rxdData.read());
 		_rxd.on(bs);
 	};

@@ -18,7 +18,7 @@ extern "C" DMA_HandleTypeDef hdma_usart2_tx;
 
 class Uart : public Actor
 {
-	static const size_t FRAME_MAX = 128;
+	static const size_t FRAME_MAX = 1024;
 
 	UART_HandleTypeDef *_huart;
 	ZeroFlow<Bytes> _rxd;

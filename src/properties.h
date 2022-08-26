@@ -16,6 +16,9 @@ typedef struct
     float currentLeft; // A
     float currentRight;
     const char* version; // __DATE __TIME
+    float Kp;
+    float Ki;
+    float Kd;
 } Properties;
 
 #endif

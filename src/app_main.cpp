@@ -1,6 +1,6 @@
 //#include <tinycbor.h>
 
-#include <RedisSpine.h>
+#include <RedisSpineCbor.h>
 #include <StringUtility.h>
 #include <PPP.h>
 #include <Uart.h>
@@ -9,7 +9,7 @@
 #include <properties.h>
 
 Thread *spineThread;
-RedisSpine *spine;
+RedisSpineCbor *spine;
 extern "C" void controlLoop();
 extern "C" void controlInit();
 extern "C" void softWatchdogReset();
@@ -23,11 +23,11 @@ Uart *uart2;
 As5600 *as5600;
 PPP *ppp;
 extern UART_HandleTypeDef huart2;
-//Sink<int> *reportSpeed;
+// Sink<int> *reportSpeed;
 
 extern "C" Properties properties;
 extern int speedR, speedL;
-extern  int pwmr, pwml;
+extern int pwmr, pwml;
 
 uint32_t counter = 0;
 
@@ -37,9 +37,6 @@ float lastTime = 0;
 float integral = 0;
 float derivative = 0;
 float lastError = 0;
-float KP = -10.0;
-float KI = -1.0;
-float KD = 0.;
 
 float PID(float error, float &integral, float &derivative, float &lastError, float &lastTime, float &KP, float &KI, float &KD)
 {
@@ -47,6 +44,7 @@ float PID(float error, float &integral, float &derivative, float &lastError, flo
     float time = Sys::millis() / 1000.0;
     float dt = time - lastTime;
     integral += error * dt;
+    integral = CLAMP(integral, -10, 10);
     derivative = (error - lastError) / dt;
     output = KP * error + KI * integral + KD * derivative;
     lastError = error;
@@ -59,8 +57,15 @@ void controlSteer()
     if (as5600)
     {
         properties.angleMeasured = as5600->degrees();
-        int delta = PID(properties.angleTarget - properties.angleMeasured, integral, derivative, lastError, lastTime, KP, KI, KD);
-        properties.steerTarget = CLAMP(delta,-600,600);
+        int delta = PID(properties.angleTarget - properties.angleMeasured,
+                        integral,
+                        derivative,
+                        lastError,
+                        lastTime,
+                        properties.Kp,
+                        properties.Ki,
+                        properties.Kd);
+        properties.steerTarget = CLAMP(delta, -600, 600);
     }
 }
 
@@ -72,7 +77,7 @@ typedef struct
 } Property;
 
 Property properties_list[] = {
-    {'c', "src/hover/system/version", (void*)properties.version},
+    {'c', "src/hover/system/version", (void *)properties.version},
     {'i', "src/hover/motor/angleTarget", &properties.angleTarget},
     {'i', "src/hover/motor/angleMeasured", &properties.angleMeasured},
     {'i', "src/hover/motor/steerTarget", &properties.steerTarget},
@@ -88,9 +93,13 @@ Property properties_list[] = {
     {'f', "src/hover/motor/voltage", &properties.voltage},
     {'f', "src/hover/motor/temperature", &properties.temperature},
     {'f', "src/hover/motor/currentLeft", &properties.currentLeft},
-    {'f', "src/hover/motor/currentRight", &properties.currentRight}};
+    {'f', "src/hover/motor/currentRight", &properties.currentRight},
+    {'f', "src/hover/motor/Kp", &properties.Kp},
+    {'f', "src/hover/motor/Ki", &properties.Ki},
+    {'f', "src/hover/motor/Kd", &properties.Kd}};
 
 #define PROPERTIES_LIST_SIZE (sizeof(properties_list) / sizeof(Property))
+ProtocolEncoder props(1024);
 
 extern "C" void app_main_init()
 {
@@ -105,16 +114,16 @@ extern "C" void app_main_init()
                       { WARN(" AS5600 failure: %s = %d ", error.message, error.code); });
     INFO("app_main() entry");
     Sys::hostname("hover");
-    spine = new RedisSpine(*spineThread);
-    ppp = new PPP(*spineThread, FRAME_MAX_SIZE);
+    spine = new RedisSpineCbor(*spineThread);
+    ppp = new PPP(*spineThread, MAX_SIZE);
 
     uart2->rxd() >> ppp->deframe() >> spine->rxdFrame;
-    spine->txdFrame >> ppp->frame() >> uart2->txd();
+    spine->txdFrame >> uart2->txd();
     ppp->garbage() >> [](const Bytes &bs)
     { WARN("garbage [%d] ", bs.size()); };
 
     controlTimer = new TimerSource(*spineThread, 50, true, "controlTimer");
-    reportTimer = new TimerSource(*spineThread, 100, true, "reportTimer");
+    reportTimer = new TimerSource(*spineThread, 1000, true, "reportTimer");
     watchdogTimer = new TimerSource(*spineThread, 3000, true, "watchdogTimer");
     *controlTimer >> [](const TimerMsg &)
     {
@@ -126,10 +135,29 @@ extern "C" void app_main_init()
     *watchdogTimer >> [](const TimerMsg &)
     {
         properties.speedTarget = 0;
+        properties.angleTarget = properties.angleMeasured;
         properties.steerTarget = 0;
     };
     controlInit();
     spine->init();
+    spine->subscriber<float>("motor/Kp") >>
+        [&](const float &w)
+    {
+        properties.Kp = w;
+        INFO("speed %d", w);
+    };
+    spine->subscriber<float>("motor/Ki") >>
+        [&](const float &w)
+    {
+        properties.Ki = w;
+        INFO("speed %d", w);
+    };
+    spine->subscriber<float>("motor/Kd") >>
+        [&](const float &w)
+    {
+        properties.Kd = w;
+        INFO("speed %d", w);
+    };
     spine->subscriber<int32_t>("motor/speedTarget") >>
         [&](const int32_t &w)
     {
@@ -156,8 +184,40 @@ extern "C" void app_main_init()
         watchdogTimer->reset();
         inactivityReset();
     };
+
     *reportTimer >> [&](const TimerMsg &)
     {
+        if (spine->connected())
+        {
+            props.start().write('[').write("pub").write("src/hover/");
+            {
+                props.write('{');
+                props.write("system/version").write(properties.version);
+                props.write("motor/angleTarget").write(properties.angleTarget);
+                props.write("motor/angleMeasured").write(properties.angleMeasured);
+                props.write("motor/steerTarget").write(properties.steerTarget);
+                props.write("motor/speedTarget").write(properties.speedTarget);
+                props.write("motor/speedR").write(speedR);
+                props.write("motor/speedL").write(speedL);
+                props.write("motor/speedLeft").write(properties.speedLeft);
+                props.write("motor/speedRight").write(properties.speedRight);
+                props.write("motor/pwmr").write(pwmr);
+                props.write("motor/pwml").write(pwml);
+                props.write("motor/hallSkippedLeft").write(properties.hallSkippedLeft);
+                props.write("motor/hallSkippedRight").write(properties.hallSkippedRight);
+                props.write("motor/voltage").write(properties.voltage);
+                props.write("motor/temperature").write(properties.temperature);
+                props.write("motor/currentLeft").write(properties.currentLeft);
+                props.write("motor/currentRight").write(properties.currentRight);
+                props.write("motor/Kp").write(properties.Kp);
+                props.write("motor/Ki").write(properties.Ki);
+                props.write("motor/Kd").write(properties.Kd);
+                props.write('}');
+            }
+            props.write(']').end();
+            spine->txdFrame.on(Bytes(props.buffer(), props.buffer() + props.size()));
+        }
+        /*
         counter++;
         Property *p = &properties_list[counter % PROPERTIES_LIST_SIZE];
         properties.angleMeasured = as5600->degrees();
@@ -172,14 +232,16 @@ extern "C" void app_main_init()
         case 'f':
             spine->publish<float>(p->name, *((float *)p->value));
             break;
-        case 'c': {
-            static std::string s = (const char*)p->value;
+        case 'c':
+        {
+            static std::string s = (const char *)p->value;
             spine->publish<std::string>(p->name, s);
             break;
         }
         default:
             break;
         }
+        */
     };
     INFO("app_main() exit");
     //   uart2->init();

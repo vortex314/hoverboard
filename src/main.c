@@ -89,7 +89,10 @@ Properties properties = {
     .voltage = 0,
     .currentLeft = 0,
     .currentRight = 0,
-    .version = "no-version"};
+    .version = "no-version",
+    .Kp = -5,
+    .Ki = 0,
+    .Kd = 0};
 
 #ifdef DEBUG_SERIAL_USART3
 #define UART_DMA_CHANNEL DMA1_Channel2

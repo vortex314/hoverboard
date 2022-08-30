@@ -68,7 +68,7 @@ void controlSteer()
         properties.steerTarget = CLAMP(delta, -600, 600);
     }
 }
-
+/*
 typedef struct
 {
     char type;
@@ -98,7 +98,7 @@ Property properties_list[] = {
     {'f', "src/hover/motor/Ki", &properties.Ki},
     {'f', "src/hover/motor/Kd", &properties.Kd}};
 
-#define PROPERTIES_LIST_SIZE (sizeof(properties_list) / sizeof(Property))
+#define PROPERTIES_LIST_SIZE (sizeof(properties_list) / sizeof(Property))*/
 ProtocolEncoder props(1024);
 
 extern "C" void app_main_init()
@@ -111,20 +111,21 @@ extern "C" void app_main_init()
     uart2->init();
     as5600->init();
     as5600->onFailure([](Error &error)
-                      { WARN(" AS5600 failure: %s = %d ", error.message, error.code); });
-    INFO("app_main() entry");
+                      { 
+                        WARN(" AS5600 failure: %s = %d ", error.message, error.code);
+                      as5600->init(); });
     Sys::hostname("hover");
     spine = new RedisSpineCbor(*spineThread);
     ppp = new PPP(*spineThread, MAX_SIZE);
 
     uart2->rxd() >> ppp->deframe() >> spine->rxdFrame;
-    spine->txdFrame >> uart2->txd();
     ppp->garbage() >> [](const Bytes &bs)
     { WARN("garbage [%d] ", bs.size()); };
+    spine->txdFrame >> uart2->txd();
 
     controlTimer = new TimerSource(*spineThread, 50, true, "controlTimer");
-    reportTimer = new TimerSource(*spineThread, 1000, true, "reportTimer");
-    watchdogTimer = new TimerSource(*spineThread, 3000, true, "watchdogTimer");
+    reportTimer = new TimerSource(*spineThread, 200, true, "reportTimer");
+    watchdogTimer = new TimerSource(*spineThread, 5000, true, "watchdogTimer");
     *controlTimer >> [](const TimerMsg &)
     {
         controlLoop();
@@ -192,6 +193,7 @@ extern "C" void app_main_init()
             props.start().write('[').write("pub").write("src/hover/");
             {
                 props.write('{');
+                props.write("system/alive").write(true);
                 props.write("system/version").write(properties.version);
                 props.write("motor/angleTarget").write(properties.angleTarget);
                 props.write("motor/angleMeasured").write(properties.angleMeasured);
@@ -217,34 +219,7 @@ extern "C" void app_main_init()
             props.write(']').end();
             spine->txdFrame.on(Bytes(props.buffer(), props.buffer() + props.size()));
         }
-        /*
-        counter++;
-        Property *p = &properties_list[counter % PROPERTIES_LIST_SIZE];
-        properties.angleMeasured = as5600->degrees();
-        switch (p->type)
-        {
-        case 'i':
-            spine->publish<int32_t>(p->name, *((int32_t *)p->value));
-            break;
-        case 'u':
-            spine->publish<uint32_t>(p->name, *((uint32_t *)p->value));
-            break;
-        case 'f':
-            spine->publish<float>(p->name, *((float *)p->value));
-            break;
-        case 'c':
-        {
-            static std::string s = (const char *)p->value;
-            spine->publish<std::string>(p->name, s);
-            break;
-        }
-        default:
-            break;
-        }
-        */
     };
-    INFO("app_main() exit");
-    //   uart2->init();
 }
 
 extern "C" void app_main_loop()

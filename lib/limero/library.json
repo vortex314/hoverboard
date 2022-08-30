@@ -7,7 +7,7 @@
   "build": {
     "libArchive": false,
     "srcDir": "/home/lieven/workspace/hoverboard/limero",
-    "srcFilter": ["+<src/>", "+<nortos/>"],
+    "srcFilter": ["+<src/>", "+<nortos/>","-<src/CborSerializer.*>","-<src/CborDeserializer.*>"],
     "includeDir": "/home/lieven/workspace/hoverboard/limero/inc",
     "flags": [
       "-I /home/lieven/workspace/hoverboard/limero/inc",

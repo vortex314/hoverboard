@@ -10,17 +10,30 @@ Uart *fromHandle(UART_HandleTypeDef *huart)
 
 Uart::Uart(Thread &thread, UART_HandleTypeDef *huart)
 	: Actor(thread), _huart(huart),
-	  _txd(7, "Uart:txd"), _rxdAvailable(15, "Uart:rxd"), _rxdData(FRAME_MAX * 2)
+	  _txdFrames(7), _rxdAvailable(15, "Uart:rxd"), _txdReady(3, "Uart:txdReady"), _rxdData(FRAME_MAX * 2)
 {
 	_rxdAvailable.async(thread);
-	_txd.async(thread);
+	_txdReady.async(thread);
 
 	_txd >> [this](const Bytes &bs) // send data
 	{
-		sendBytes(bs);
+		if (_dmaTxdDone && _txdFrames.size()==0 ) _txdReady.on(true); // first kick
+		if ( _txdFrames.push(bs) ==  false) {
+			_txdOverflow++;
+		};
 	};
 
-	_rxdAvailable >> [&](const bool &) // empty circular buffer
+	_txdReady >> [this](const bool &b)
+	{
+		if (_txdFrames.size() )
+		{
+			_txdFrames.pop(_txdBuffer);
+			sendBytes(_txdBuffer);
+		}
+	};
+
+	_rxdAvailable >>
+		[&](const bool &) // empty circular buffer
 	{
 		Bytes bs;
 		bs.reserve(FRAME_MAX);
@@ -52,9 +65,9 @@ bool Uart::init()
 
 extern "C" void uartSendBytes(uint8_t *data, size_t size, uint32_t retries)
 {
-	uart2->sendBytes(Bytes(data, data + size));
+	uart2->txd().on(Bytes(data, data + size));
 }
-
+// #define BUFFER_4_BYTE_ALIGNED
 void Uart::sendBytes(Bytes data)
 {
 	if (_dmaTxdDone == false)
@@ -63,15 +76,21 @@ void Uart::sendBytes(Bytes data)
 		return;
 	}
 	_dmaTxdDone = false;
-	size_t size = data.size() < sizeof(_txdBuffer) ? data.size() : sizeof(_txdBuffer);
-	memcpy(_txdBuffer, data.data(), size);
-	if (HAL_UART_Transmit_DMA(&huart2, _txdBuffer, size) != HAL_OK)
+	//	size_t size = data.size() < sizeof(_txdBuffer) ? data.size() : sizeof(_txdBuffer);
+	//	memcpy(_txdBuffer, data.data(), size);
+	if (HAL_UART_Transmit_DMA(&huart2, _txdBuffer.data(), _txdBuffer.size()) != HAL_OK)
+	{
+		_dmaTxdDone = true;
 		_txdOverflow++;
+		return;
+	}
+	return;
 }
 
 extern "C" void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 {
 	fromHandle(huart)->_dmaTxdDone = true;
+	fromHandle(huart)->_txdReady.onIsr(true);
 }
 
 /* This function handles DMA1 stream6 global interrupt. */

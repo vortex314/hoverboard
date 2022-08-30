@@ -22,16 +22,19 @@ class Uart : public Actor
 
 	UART_HandleTypeDef *_huart;
 	ZeroFlow<Bytes> _rxd;
-	QueueFlow<Bytes> _txd;
+	ZeroFlow<Bytes> _txd;
+	ArrayQueue<Bytes> _txdFrames;
 	QueueFlow<bool> _rxdAvailable;
+
 	CircBuf _rxdData;
 
 public:
+	QueueFlow<bool> _txdReady;
 	bool _dmaTxdDone;
 	size_t _wrPtr, _rdPtr;
 
 	uint8_t _rxdBuffer[FRAME_MAX];
-	uint8_t _txdBuffer[FRAME_MAX];
+	Bytes _txdBuffer;
 	uint32_t _txdOverflow = 0;
 	uint32_t _rxdOverflow = 0;
 

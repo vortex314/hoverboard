@@ -124,7 +124,7 @@ extern "C" void app_main_init()
     spine->txdFrame >> uart2->txd();
 
     controlTimer = new TimerSource(*spineThread, 50, true, "controlTimer");
-    reportTimer = new TimerSource(*spineThread, 200, true, "reportTimer");
+    reportTimer = new TimerSource(*spineThread, 500, true, "reportTimer");
     watchdogTimer = new TimerSource(*spineThread, 5000, true, "watchdogTimer");
     *controlTimer >> [](const TimerMsg &)
     {
@@ -165,17 +165,11 @@ extern "C" void app_main_init()
         properties.speedTarget = w;
         INFO("speed %d", w);
     };
-    spine->subscriber<int32_t>("motor/steerTarget") >>
-        [&](const int32_t &w)
-    {
-        properties.steerTarget = w;
-        INFO("steer %d", w);
-    };
 
     spine->subscriber<int32_t>("motor/angleTarget") >>
         [&](const int32_t &w)
     {
-        properties.angleTarget = CLAMP(w, -90, 90);
+        properties.angleTarget = CLAMP(w, -80,80);
         INFO("angleTarget %d", w);
     };
     // stop drive when offline
@@ -184,6 +178,14 @@ extern "C" void app_main_init()
     {
         watchdogTimer->reset();
         inactivityReset();
+    };
+    spine->subscriber<bool>("motor/angleDelta") >>
+        [&](const int32_t &w)
+    {
+        if ( w < 0 )
+            properties.angleTarget = CLAMP(properties.angleTarget + 1, -80,80);
+        else
+            properties.angleTarget = CLAMP(properties.angleTarget - 1, -80,80);
     };
 
     *reportTimer >> [&](const TimerMsg &)
@@ -217,7 +219,7 @@ extern "C" void app_main_init()
                 props.write('}');
             }
             props.write(']').end();
-            spine->txdFrame.on(Bytes(props.buffer(), props.buffer() + props.size()));
+            spine->txdFrame.on(props);
         }
     };
 }
